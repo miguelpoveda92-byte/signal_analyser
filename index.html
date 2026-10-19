@@ -328,16 +328,21 @@
     LiteGraph.registerNodeType("Telecom/GeneradorContinuo", NodoGeneradorContinuo);
 
 
-    // --- MÓDULO 2: Transformación de Variable Independiente ---
+    // --- MÓDULO 2: Transformación de Variable Independiente (Corregido) ---
     function NodoTransformacion() {
         this.addInput("x(t)", "signal");
         this.addOutput("y(t)", "signal");
-        this.properties = { nombre: "y(t)", t0: 1.0, a: 1.0, inv: false };
+        this.properties = { nombre: "y(t)", t0: 0.0, a: 1.0, inv: false };
 
         this.addWidget("text", "Etiqueta", "y(t)", v => this.properties.nombre = v);
-        this.addWidget("number", "Desplaz. t_0", 1.0, v => this.properties.t0 = v, { min: -10, max: 10, step: 0.2 });
-        this.addWidget("number", "Escalado a", 1.0, v => this.properties.a = v, { min: 0.1, max: 5, step: 0.1 });
-        this.addWidget("toggle", "Inversión (-t)", false, v => this.properties.inv = v);
+        this.addWidget("number", "Desplaz. t_0", 0.0, v => this.properties.t0 = Number(v), { min: -10, max: 10, step: 0.2 });
+        this.addWidget("number", "Escalado a", 1.0, v => this.properties.a = Math.max(0.01, Number(v)), { min: 0.1, max: 5, step: 0.1 });
+        
+        // Widget toggle enlazado explícitamente a this.properties.inv
+        const that = this;
+        this.addWidget("toggle", "Inversión (-t)", false, function(v) {
+            that.properties.inv = Boolean(v);
+        });
 
         this.size = [215, 140];
         applyLightStyle(this, "#c7d2fe", "#ffffff");
@@ -347,18 +352,24 @@
         let in1 = this.getInputData(0);
         if (!in1) return;
 
-        const { t0, a, inv, nombre } = this.properties;
+        // Leer valores sincronizando propiedades y widgets
+        const nombre = this.properties.nombre || "y(t)";
+        const t0 = (this.widgets && this.widgets[1]) ? Number(this.widgets[1].value) : Number(this.properties.t0 || 0);
+        const a_val = (this.widgets && this.widgets[2]) ? Math.max(0.01, Number(this.widgets[2].value)) : Math.max(0.01, Number(this.properties.a || 1));
+        const inv = (this.widgets && this.widgets[3]) ? Boolean(this.widgets[3].value) : Boolean(this.properties.inv);
+
         const { t, dt, tMin } = getCurrentTimeVector();
-        let scaleA = (inv ? -1 : 1) * (a <= 0 ? 1 : a);
+        
+        // Regla general: y(t) = x( a * (s * t + t0) ) donde s = -1 si hay inversión, +1 en caso contrario
+        const sign = inv ? -1.0 : 1.0;
 
         let outValues = new Array(N).fill(0);
         for (let i = 0; i < N; i++) {
-            // Convenio: y(t) = x( a * (t + t0) )
-            // Si t0 > 0 -> Adelanto (desplazamiento a la izquierda)
-            // Si t0 < 0 -> Retraso (desplazamiento a la derecha)
-            let tau = scaleA * (t[i] + t0);
+            // Instante evaluado en la señal original: tau = sign * a * t + t0
+            let tau = sign * a_val * t[i] + t0;
             let origIdx = (tau - tMin) / dt;
             let i0 = Math.floor(origIdx);
+            
             if (i0 >= 0 && i0 < N - 1) {
                 let frac = origIdx - i0;
                 outValues[i] = in1.values[i0] * (1 - frac) + in1.values[i0 + 1] * frac;
@@ -366,14 +377,15 @@
         }
 
         this.setOutputData(0, {
-            name: nombre || "y(t)",
+            name: nombre,
             values: outValues,
             discrete: in1.discrete,
             isAnalyticDelta: in1.isAnalyticDelta,
-            deltaWeight: in1.deltaWeight ? in1.deltaWeight / Math.abs(scaleA) : 0,
+            deltaWeight: in1.deltaWeight ? in1.deltaWeight / (a_val || 1) : 0,
             dt: dt
         });
     };
+
     LiteGraph.registerNodeType("Telecom/Transformacion", NodoTransformacion);
 
 
@@ -1144,20 +1156,18 @@
     canvas.render_curved_connections = true;
     canvas.default_link_color = "#64748b";
 
-    // Mejora de Resolución para Pantallas Retina / 4K
+    // Ajuste nativo de resolución sin desfasar las coordenadas de clic
     function resizeCanvas() {
         const container = document.getElementById("canvas-container");
-        const dpr = window.devicePixelRatio || 1;
         const w = container.clientWidth;
         const h = container.clientHeight;
 
-        canvasElement.width = w * dpr;
-        canvasElement.height = h * dpr;
+        // Se asigna la geometría CSS del canvas
         canvasElement.style.width = w + "px";
         canvasElement.style.height = h + "px";
 
-        canvas.setCanvasSize(w, h);
-        if (canvas.ctx) canvas.ctx.scale(dpr, dpr);
+        // LiteGraph ajusta el buffer interno y sincroniza la matriz de eventos del ratón
+        canvas.resize(w, h);
 
         Plotly.Plots.resize('plot-time');
         Plotly.Plots.resize('plot-freq');
