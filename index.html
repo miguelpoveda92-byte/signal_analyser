@@ -18,9 +18,9 @@
             background: #f8fafc; color: #1e293b; overflow: hidden;
         }
         
-        /* 1. Panel Lateral de Módulos */
+        /* 1. Panel Lateral */
         #sidebar {
-            width: 255px; background: #ffffff; border-right: 1px solid #e2e8f0;
+            width: 255px; min-width: 255px; background: #ffffff; border-right: 1px solid #e2e8f0;
             padding: 12px 14px; display: flex; flex-direction: column; gap: 5px;
             box-shadow: 2px 0 10px rgba(0,0,0,0.02); z-index: 10; overflow-y: auto;
         }
@@ -45,33 +45,59 @@
         #canvas-container { flex: 1; position: relative; height: 100%; background: #f1f5f9; overflow: hidden; }
         #mycanvas { display: block; width: 100%; height: 100%; }
 
-        /* 3. Panel de Gráficas y Controles de Visualización */
+        #subgraph-banner {
+            display: none; position: absolute; top: 12px; left: 16px; z-index: 20;
+            background: #1e293b; color: white; padding: 8px 14px; border-radius: 6px;
+            font-size: 0.85rem; box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+        }
+        #subgraph-banner button {
+            background: #38bdf8; border: none; color: #0f172a; font-weight: 600;
+            padding: 4px 10px; margin-left: 10px; border-radius: 4px; cursor: pointer;
+        }
+
+        /* Barra Divisoria Redimensionable */
+        #resizer {
+            width: 8px; background: #e2e8f0; cursor: col-resize; transition: background 0.2s;
+            position: relative; z-index: 15; user-select: none;
+        }
+        #resizer:hover, #resizer.dragging { background: #3b82f6; }
+
+        /* 3. Panel de Gráficas */
         #plot-panel { 
-            width: 43%; min-width: 400px; height: 100%; background: #ffffff; 
+            width: 44%; min-width: 280px; max-width: 80%; height: 100%; background: #ffffff; 
             border-left: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10;
+            transition: margin-right 0.25s ease;
+        }
+        #plot-panel.hidden {
+            display: none;
         }
         #plot-controls {
-            padding: 10px 14px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
-            display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 0.8rem;
+            padding: 8px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.78rem;
         }
-        .ctrl-item { display: flex; align-items: center; gap: 5px; }
+        .ctrl-item { display: flex; align-items: center; gap: 4px; }
         .ctrl-item label { font-weight: 600; color: #475569; }
         .ctrl-item select, .ctrl-item input {
-            padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 5px; 
-            font-size: 0.8rem; background: #fff; color: #1e293b;
+            padding: 3px 5px; border: 1px solid #cbd5e1; border-radius: 4px; 
+            font-size: 0.78rem; background: #fff; color: #1e293b;
         }
-        .ctrl-item input[type="number"] { width: 62px; }
+        .ctrl-item input[type="number"] { width: 58px; }
         .plot-container { flex: 1; width: 100%; min-height: 0; border-bottom: 1px solid #f1f5f9; }
         
-        .help-box {
-            margin-top: auto; font-size: 0.71rem; color: #64748b; 
-            background: #f8fafc; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; line-height: 1.35;
-        }
         .action-btn {
             background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569;
             padding: 6px; border-radius: 6px; font-size: 0.77rem; cursor: pointer; font-weight: 600; margin-top: 2px;
         }
         .action-btn:hover { background: #e2e8f0; }
+
+        /* Botón flotante para ocultar/mostrar gráficas */
+        #toggle-panel-btn {
+            position: absolute; top: 12px; right: 14px; z-index: 30;
+            background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b;
+            padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;
+            cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        #toggle-panel-btn:hover { background: #f1f5f9; }
     </style>
 </head>
 <body>
@@ -85,13 +111,16 @@
             <span>Generador Continuo</span><span class="dot" style="background:#3b82f6"></span>
         </button>
         <button class="module-btn" onclick="addModule('Telecom/GeneradorDiscreto')">
-            <span>Generador Discreto (Manual)</span><span class="dot" style="background:#0284c7"></span>
+            <span>Generador Discreto</span><span class="dot" style="background:#0284c7"></span>
         </button>
         <button class="module-btn" onclick="addModule('Telecom/Digital')">
             <span>Secuencia Digital (0/1)</span><span class="dot" style="background:#3b82f6"></span>
         </button>
 
-        <div class="category-title">2. Sistemas y Operaciones</div>
+        <div class="category-title">2. Transformación y Sistemas</div>
+        <button class="module-btn" onclick="addModule('Telecom/Transformacion')">
+            <span>Transf. Variable (t0, a)</span><span class="dot" style="background:#6366f1"></span>
+        </button>
         <button class="module-btn" onclick="addModule('Telecom/Sumador')">
             <span>Sumador Ponderado</span><span class="dot" style="background:#10b981"></span>
         </button>
@@ -119,26 +148,32 @@
             <span>Detector de Envolvente</span><span class="dot" style="background:#ea580c"></span>
         </button>
 
-        <div class="category-title">4. Visualización</div>
+        <div class="category-title">4. Estructura y Visores</div>
+        <button class="module-btn" onclick="addModule('Telecom/Subgrafo')">
+            <span>Subsistema (Caja Doble Clic)</span><span class="dot" style="background:#ec4899"></span>
+        </button>
         <button class="module-btn" onclick="addModule('Telecom/Osciloscopio')">
             <span>Añadir Osciloscopio</span><span class="dot" style="background:#8b5cf6"></span>
         </button>
 
         <button class="action-btn" onclick="resetView()">🔍 Centrar Lienzo</button>
         <button class="action-btn" style="color:#dc2626;" onclick="clearCanvas()">🗑️ Vaciar Todo</button>
-
-        <div class="help-box">
-            <b>Regla de Dominios:</b><br>
-            • No se pueden conectar señales <i>Discretas</i> con señales <i>Continuas</i> en Sumadores o Convoluciones.
-        </div>
     </div>
 
-    <!-- Lienzo interactivo -->
+    <!-- Lienzo central interactivo con indicador de subgrafo -->
     <div id="canvas-container">
+        <div id="subgraph-banner">
+            Estás dentro de un <b>Subsistema</b>
+            <button onclick="exitSubgraph()">⬅ Volver al sistema principal</button>
+        </div>
+        <button id="toggle-panel-btn" onclick="togglePlotPanel()">👁️ Ocultar Gráficas</button>
         <canvas id="mycanvas"></canvas>
     </div>
     
-    <!-- Panel derecho: Selector de Osciloscopio, Rangos y Gráficas -->
+    <!-- Barra divisoria redimensionable -->
+    <div id="resizer"></div>
+
+    <!-- Panel derecho: Gráficas -->
     <div id="plot-panel">
         <div id="plot-controls">
             <div class="ctrl-item">
@@ -146,14 +181,14 @@
                 <select id="oscSelect" onchange="forcePlotUpdate()"></select>
             </div>
             <div class="ctrl-item">
-                <label>Eje X (min a max):</label>
-                <input type="number" id="tMin" value="-5.0" step="1.0" min="-50.0" max="0" onchange="forcePlotUpdate()">
+                <label>Tiempo (s):</label>
+                <input type="number" id="tMin" value="-2.0" step="0.5" onchange="forcePlotUpdate()">
                 <span>a</span>
-                <input type="number" id="tMax" value="15.0" step="1.0" min="0" max="50.0" onchange="forcePlotUpdate()">
+                <input type="number" id="tMax" value="2.0" step="0.5" onchange="forcePlotUpdate()">
             </div>
             <div class="ctrl-item">
                 <label>Frec ±(Hz):</label>
-                <input type="number" id="fMax" value="100" step="10" min="10" max="200" onchange="forcePlotUpdate()">
+                <input type="number" id="fMax" value="50" step="5" min="5" max="200" onchange="forcePlotUpdate()">
             </div>
         </div>
         <div id="plot-time" class="plot-container"></div>
@@ -162,15 +197,13 @@
 
 <script>
     // ==========================================
-    // 1. MOTOR MATEMÁTICO DINÁMICO
+    // 1. MOTOR MATEMÁTICO (FFT CONTINUA DENSA)
     // ==========================================
     const N = 2000;
     
     function getCurrentTimeVector() {
-        let tMinInput = document.getElementById("tMin");
-        let tMaxInput = document.getElementById("tMax");
-        let tMin = tMinInput ? parseFloat(tMinInput.value) : -5.0;
-        let tMax = tMaxInput ? parseFloat(tMaxInput.value) : 15.0;
+        let tMin = parseFloat(document.getElementById("tMin").value) || -2.0;
+        let tMax = parseFloat(document.getElementById("tMax").value) || 2.0;
         if (tMin >= tMax) tMin = tMax - 0.1;
 
         let dt = (tMax - tMin) / (N - 1);
@@ -181,9 +214,10 @@
         return { t: timeArray, dt: dt, tMin: tMin, tMax: tMax };
     }
 
-    const F_LIMIT = 200;
-    const df = 0.5;
-    const f_axis = Array.from({length: 801}, (_, i) => (i - 400) * df);
+    // Mallado denso de frecuencias de cálculo (df = 0.05 Hz para máxima resolución visual)
+    const F_MAX_CALC = 120;
+    const DF_CALC = 0.05;
+    const f_axis = Array.from({length: Math.round(2 * F_MAX_CALC / DF_CALC) + 1}, (_, i) => -F_MAX_CALC + i * DF_CALC);
 
     function computeSpectrum(signalObj, currentDt) {
         if (!signalObj) return new Array(f_axis.length).fill(0);
@@ -194,7 +228,7 @@
         const isDisc = signalObj.discrete;
 
         if (isDisc && signalObj.stemX && signalObj.stemY) {
-            // DTFT para señales discretas: X(f) = sum x[n] * exp(-j 2pi f n)
+            // DTFT con resolución densa
             const n_vals = signalObj.stemX;
             const x_vals = signalObj.stemY;
             return f_axis.map(f => {
@@ -210,7 +244,7 @@
                 return Math.sqrt(re * re + im * im);
             });
         } else {
-            // Fourier continuo: X(f) = sum x(t) * exp(-j 2pi f t) * dt[cite: 1]
+            // Evaluación de la integral de Fourier continua
             let currentT = getCurrentTimeVector().t;
             return f_axis.map(f => {
                 let re = 0, im = 0;
@@ -223,14 +257,6 @@
                 return Math.sqrt(re * re + im * im) * currentDt;
             });
         }
-    }
-
-    function interpFreq(spec, fTarget) {
-        let idx = (fTarget + F_LIMIT) / df;
-        if (idx < 0 || idx >= f_axis.length - 1) return 0;
-        let i0 = Math.floor(idx);
-        let frac = idx - i0;
-        return spec[i0] * (1 - frac) + spec[i0 + 1] * frac;
     }
 
     function evaluateFilterH(f, tipo, aprox, fc, bw, orden, gain) {
@@ -259,45 +285,42 @@
     // 2. DEFINICIÓN DE LOS MÓDULOS (NODOS)
     // ==========================================
 
-    // --- GENERADOR CONTINUO ---
+    // --- MÓDULO 1: Generador Continuo (Sin transformaciones internas) ---
     function NodoGeneradorContinuo() {
         this.addOutput("x(t)", "signal");
-        this.properties = { tipo: "Coseno", amp: 1, freq: 2, ancho: 0.5, a: 1, t0: 0 };
+        this.properties = { nombre: "x(t)", tipo: "Pulso Rectangular", amp: 1, freq: 2, ancho: 0.8 };
         
-        this.addWidget("combo", "Señal", "Coseno", v => this.properties.tipo = v, { values: ["Coseno", "Seno", "Pulso Rectangular", "Escalón Unidad", "Delta"] });
+        this.addWidget("text", "Etiqueta", "x(t)", v => this.properties.nombre = v);
+        this.addWidget("combo", "Señal", "Pulso Rectangular", v => this.properties.tipo = v, { values: ["Coseno", "Seno", "Pulso Rectangular", "Escalón Unidad", "Delta"] });
         this.addWidget("number", "Amplitud", 1, v => this.properties.amp = v, { min: 0.1, max: 10, step: 0.1 });
-        this.addWidget("number", "Frec / Parám", 2, v => this.properties.freq = v, { min: 0.2, max: 50, step: 0.2 });
-        this.addWidget("number", "Ancho Pulso", 0.5, v => this.properties.ancho = v, { min: 0.1, max: 2.0, step: 0.1 });
-        this.addWidget("number", "Escala (a)", 1, v => this.properties.a = v, { min: -4, max: 4, step: 0.5 });
-        this.addWidget("number", "Desplaz", 0, v => this.properties.t0 = v, { min: -5, max: 5, step: 0.5 });
+        this.addWidget("number", "Frec (Hz)", 2, v => this.properties.freq = v, { min: 0.2, max: 50, step: 0.2 });
+        this.addWidget("number", "Ancho Pulso", 0.8, v => this.properties.ancho = v, { min: 0.1, max: 5.0, step: 0.1 });
         
-        this.size = [210, 185];
+        this.size = [210, 160];
         applyLightStyle(this, "#bfdbfe", "#ffffff");
     }
     NodoGeneradorContinuo.title = "Generador Continuo";
     NodoGeneradorContinuo.prototype.onExecute = function() {
-        const { tipo, amp, freq, ancho, a, t0 } = this.properties;
-        const scaleA = a === 0 ? 1 : a;
+        const { tipo, amp, freq, ancho, nombre } = this.properties;
         const { t, dt, tMin } = getCurrentTimeVector();
 
-        const targetTime = t0 / scaleA;
-        let deltaIdx = Math.round((targetTime - tMin) / dt);
+        let deltaIdx = Math.round((0 - tMin) / dt);
 
         let values = t.map((time, idx) => {
-            let tau = scaleA * time - t0;
-            if (tipo === "Coseno") return amp * Math.cos(2 * Math.PI * freq * tau);
-            if (tipo === "Seno") return amp * Math.sin(2 * Math.PI * freq * tau);
-            if (tipo === "Pulso Rectangular") return Math.abs(tau) <= (ancho / 2) ? amp : 0;
-            if (tipo === "Escalón Unidad") return tau >= 0 ? amp : 0;
+            if (tipo === "Coseno") return amp * Math.cos(2 * Math.PI * freq * time);
+            if (tipo === "Seno") return amp * Math.sin(2 * Math.PI * freq * time);
+            if (tipo === "Pulso Rectangular") return Math.abs(time) <= (ancho / 2) ? amp : 0;
+            if (tipo === "Escalón Unidad") return time >= 0 ? amp : 0;
             if (tipo === "Delta") return (idx === deltaIdx) ? amp : 0;
             return 0;
         });
 
         this.setOutputData(0, { 
+            name: nombre || "x(t)",
             values, 
             discrete: false, 
             isAnalyticDelta: tipo === "Delta",
-            deltaWeight: amp / Math.abs(scaleA),
+            deltaWeight: amp,
             deltaIndex: deltaIdx,
             dt: dt
         });
@@ -305,15 +328,65 @@
     LiteGraph.registerNodeType("Telecom/GeneradorContinuo", NodoGeneradorContinuo);
 
 
-    // --- GENERADOR DISCRETO (MANUAL) ---
+    // --- MÓDULO 2: Transformación de Variable Independiente ---
+    function NodoTransformacion() {
+        this.addInput("x(t)", "signal");
+        this.addOutput("y(t)", "signal");
+        this.properties = { nombre: "y(t)", t0: 1.0, a: 1.0, inv: false };
+
+        this.addWidget("text", "Etiqueta", "y(t)", v => this.properties.nombre = v);
+        this.addWidget("number", "Desplaz. t_0", 1.0, v => this.properties.t0 = v, { min: -10, max: 10, step: 0.2 });
+        this.addWidget("number", "Escalado a", 1.0, v => this.properties.a = v, { min: 0.1, max: 5, step: 0.1 });
+        this.addWidget("toggle", "Inversión (-t)", false, v => this.properties.inv = v);
+
+        this.size = [215, 140];
+        applyLightStyle(this, "#c7d2fe", "#ffffff");
+    }
+    NodoTransformacion.title = "Transf. Variable";
+    NodoTransformacion.prototype.onExecute = function() {
+        let in1 = this.getInputData(0);
+        if (!in1) return;
+
+        const { t0, a, inv, nombre } = this.properties;
+        const { t, dt, tMin } = getCurrentTimeVector();
+        let scaleA = (inv ? -1 : 1) * (a <= 0 ? 1 : a);
+
+        let outValues = new Array(N).fill(0);
+        for (let i = 0; i < N; i++) {
+            // Convenio: y(t) = x( a * (t + t0) )
+            // Si t0 > 0 -> Adelanto (desplazamiento a la izquierda)
+            // Si t0 < 0 -> Retraso (desplazamiento a la derecha)
+            let tau = scaleA * (t[i] + t0);
+            let origIdx = (tau - tMin) / dt;
+            let i0 = Math.floor(origIdx);
+            if (i0 >= 0 && i0 < N - 1) {
+                let frac = origIdx - i0;
+                outValues[i] = in1.values[i0] * (1 - frac) + in1.values[i0 + 1] * frac;
+            }
+        }
+
+        this.setOutputData(0, {
+            name: nombre || "y(t)",
+            values: outValues,
+            discrete: in1.discrete,
+            isAnalyticDelta: in1.isAnalyticDelta,
+            deltaWeight: in1.deltaWeight ? in1.deltaWeight / Math.abs(scaleA) : 0,
+            dt: dt
+        });
+    };
+    LiteGraph.registerNodeType("Telecom/Transformacion", NodoTransformacion);
+
+
+    // --- MÓDULO 3: Generador Discreto Manual ---
     function NodoGeneradorDiscreto() {
         this.addOutput("x[n]", "signal");
-        this.properties = { valores: "1.0, 0.5, -0.5, -1.0, 0.0, 0.5", n0: 0 };
+        this.properties = { nombre: "x[n]", valores: "1.0, 0.5, -0.5, -1.0, 0.0, 0.5", n0: 0 };
         
+        this.addWidget("text", "Etiqueta", "x[n]", v => this.properties.nombre = v);
         this.addWidget("text", "Valores", "1.0, 0.5, -0.5, -1.0, 0.0, 0.5", v => this.properties.valores = v);
         this.addWidget("number", "Inicio n0", 0, v => this.properties.n0 = v, { min: -20, max: 20, step: 1 });
         
-        this.size = [220, 105];
+        this.size = [220, 120];
         applyLightStyle(this, "#7dd3fc", "#ffffff");
     }
     NodoGeneradorDiscreto.title = "Generador Discreto";
@@ -336,6 +409,7 @@
         }
 
         this.setOutputData(0, {
+            name: this.properties.nombre || "x[n]",
             values: fullValues,
             discrete: true,
             isAnalyticDelta: false,
@@ -347,16 +421,17 @@
     LiteGraph.registerNodeType("Telecom/GeneradorDiscreto", NodoGeneradorDiscreto);
 
 
-    // --- GENERADOR DIGITAL ---
+    // --- MÓDULO 4: Secuencia Digital ---
     function NodoDigital() {
         this.addOutput("d(t)", "signal");
-        this.properties = { bits: "10110010", codigo: "NRZ Unipolar (0/1)", amp: 1 };
+        this.properties = { nombre: "d(t)", bits: "10110010", codigo: "NRZ Unipolar (0/1)", amp: 1 };
         
+        this.addWidget("text", "Etiqueta", "d(t)", v => this.properties.nombre = v);
         this.addWidget("text", "Bits", "10110010", v => this.properties.bits = v);
         this.addWidget("combo", "Código", "NRZ Unipolar (0/1)", v => this.properties.codigo = v, { values: ["NRZ Unipolar (0/1)", "NRZ Polar (-1/+1)", "Manchester"] });
         this.addWidget("number", "Amplitud", 1, v => this.properties.amp = v, { min: 0.5, max: 5, step: 0.5 });
         
-        this.size = [220, 115];
+        this.size = [220, 135];
         applyLightStyle(this, "#bfdbfe", "#ffffff");
     }
     NodoDigital.title = "Secuencia Digital";
@@ -366,7 +441,7 @@
         
         const numBits = cleanBits.length;
         const samplesPerBit = Math.floor(N / numBits);
-        const { codigo, amp } = this.properties;
+        const { codigo, amp, nombre } = this.properties;
         const { dt } = getCurrentTimeVector();
 
         let values = new Array(N).fill(0);
@@ -382,25 +457,26 @@
             }
         }
 
-        this.setOutputData(0, { values, discrete: false, isAnalyticDelta: false, dt: dt });
+        this.setOutputData(0, { name: nombre || "d(t)", values, discrete: false, isAnalyticDelta: false, dt: dt });
     };
     LiteGraph.registerNodeType("Telecom/Digital", NodoDigital);
 
 
-    // --- SUMADOR PONDERADO ---
+    // --- MÓDULO 5: Sumador Ponderado ---
     function NodoSumador() {
         this.addInput("x1", "signal");
         this.addInput("x2", "signal");
         this.addOutput("y", "signal");
-        this.properties = { k1: 1.0, k2: 1.0 };
+        this.properties = { nombre: "y_sum(t)", k1: 1.0, k2: 1.0 };
 
+        this.addWidget("text", "Etiqueta", "y_sum(t)", v => this.properties.nombre = v);
         this.addWidget("number", "Factor k1", 1.0, v => this.properties.k1 = v, { min: -10, max: 10, step: 0.1 });
         this.addWidget("number", "Factor k2", 1.0, v => this.properties.k2 = v, { min: -10, max: 10, step: 0.1 });
 
-        this.size = [185, 95];
+        this.size = [190, 115];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
-    NodoSumador.title = "Sumador (k1·x1 + k2·x2)";
+    NodoSumador.title = "Sumador Ponderado";
     NodoSumador.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
         let in2 = this.getInputData(1);
@@ -413,7 +489,7 @@
         }
         this.boxcolor = null;
 
-        const { k1, k2 } = this.properties;
+        const { k1, k2, nombre } = this.properties;
         const { dt } = getCurrentTimeVector();
         let v1 = in1 ? in1.values : new Array(N).fill(0);
         let v2 = in2 ? in2.values : new Array(N).fill(0);
@@ -438,12 +514,10 @@
                 let val2 = idx2 !== -1 ? in2.stemY[idx2] : 0;
                 stemY.push(k1 * val1 + k2 * val2);
             }
-        } else if (isDisc && in1 && in1.stemX) {
-            stemX = in1.stemX;
-            stemY = in1.stemX.map((_, idx) => k1 * in1.stemY[idx]);
         }
 
         this.setOutputData(0, {
+            name: nombre || "y_sum",
             values,
             discrete: isDisc,
             stemX,
@@ -454,16 +528,17 @@
     LiteGraph.registerNodeType("Telecom/Sumador", NodoSumador);
 
 
-    // --- MULTIPLICADOR / MEZCLADOR ---
+    // --- MÓDULO 6: Multiplicador / Mezclador ---
     function NodoMultiplicador() {
         this.addInput("x1", "signal");
         this.addInput("x2", "signal");
         this.addOutput("y", "signal");
-        this.properties = { gain: 1.0 };
+        this.properties = { nombre: "y_mult(t)", gain: 1.0 };
 
-        this.addWidget("number", "Ganancia (k)", 1.0, v => this.properties.gain = v, { min: -10, max: 10, step: 0.1 });
+        this.addWidget("text", "Etiqueta", "y_mult(t)", v => this.properties.nombre = v);
+        this.addWidget("number", "Ganancia k", 1.0, v => this.properties.gain = v, { min: -10, max: 10, step: 0.1 });
 
-        this.size = [190, 75];
+        this.size = [190, 95];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
     NodoMultiplicador.title = "Mezclador (k·x1·x2)";
@@ -479,37 +554,32 @@
         }
         this.boxcolor = null;
 
-        const k = this.properties.gain;
+        const { gain, nombre } = this.properties;
         const { dt } = getCurrentTimeVector();
         let values = new Array(N);
         for (let i = 0; i < N; i++) {
-            values[i] = k * in1.values[i] * in2.values[i];
-        }
-
-        let isDisc = in1.discrete;
-        let stemX = null, stemY = null;
-        if (isDisc && in1.stemX && in2.stemX) {
-            stemX = in1.stemX;
-            stemY = in1.stemX.map((_, idx) => k * (in1.stemY[idx] || 0) * (in2.stemY[idx] || 0));
+            values[i] = gain * in1.values[i] * in2.values[i];
         }
 
         this.setOutputData(0, {
+            name: nombre || "y_mult",
             values,
-            discrete: isDisc,
-            stemX,
-            stemY,
+            discrete: in1.discrete,
             dt: dt
         });
     };
     LiteGraph.registerNodeType("Telecom/Multiplicador", NodoMultiplicador);
 
 
-    // --- CONVOLUCIÓN DISCRETA Y CONTINUA ---
+    // --- MÓDULO 7: Convolución ---
     function NodoConvolucion() {
         this.addInput("x", "signal");
         this.addInput("h", "signal");
         this.addOutput("y", "signal");
-        this.size = [175, 75];
+        this.properties = { nombre: "y_conv" };
+        this.addWidget("text", "Etiqueta", "y_conv", v => this.properties.nombre = v);
+
+        this.size = [185, 80];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
     NodoConvolucion.title = "Convolución (Dis/Cont)";
@@ -527,6 +597,7 @@
 
         const isDisc = in1.discrete;
         const { dt, tMin } = getCurrentTimeVector();
+        const { nombre } = this.properties;
 
         if (isDisc && in1.stemX && in2.stemX) {
             let x_n = in1.stemX;
@@ -541,9 +612,7 @@
             let y_n = [];
             let y_v = new Array(lenY).fill(0);
 
-            for (let i = 0; i < lenY; i++) {
-                y_n.push(minNy + i);
-            }
+            for (let i = 0; i < lenY; i++) y_n.push(minNy + i);
 
             for (let i = 0; i < x_n.length; i++) {
                 for (let j = 0; j < h_n.length; j++) {
@@ -561,6 +630,7 @@
             }
 
             this.setOutputData(0, {
+                name: nombre || "y_conv[n]",
                 values: fullValues,
                 discrete: true,
                 stemX: y_n,
@@ -582,9 +652,10 @@
                         sum += x[k] * h[h_idx];
                     }
                 }
-                y[n] = sum * dt; //[cite: 1]
+                y[n] = sum * dt;
             }
             this.setOutputData(0, {
+                name: nombre || "y_conv(t)",
                 values: y,
                 discrete: false,
                 dt: dt
@@ -594,29 +665,29 @@
     LiteGraph.registerNodeType("Telecom/Convolucion", NodoConvolucion);
 
 
-    // --- FILTRO LTI ---
+    // --- MÓDULO 8: Filtro LTI (Con Supresión de Residuos) ---
     function NodoFiltro() {
         this.addInput("x(t)", "signal");
         this.addOutput("y(t)", "signal");
         this.properties = { 
+            nombre: "y_filt(t)",
             tipo: "Paso Bajo (LPF)", 
-            aprox: "Butterworth", 
-            fc: 15, 
+            aprox: "Ideal", 
+            fc: 10, 
             bw: 10, 
             orden: 4, 
             gain: 1.0,
             showH: true
         };
 
+        this.addWidget("text", "Etiqueta", "y_filt(t)", v => this.properties.nombre = v);
         this.addWidget("combo", "Tipo", "Paso Bajo (LPF)", v => this.properties.tipo = v, { values: ["Paso Bajo (LPF)", "Paso Alto (HPF)", "Paso Banda (BPF)"] });
-        this.addWidget("combo", "Resp.", "Butterworth", v => this.properties.aprox = v, { values: ["Ideal", "Butterworth"] });
-        this.addWidget("number", "fc / f0 (Hz)", 15, v => this.properties.fc = v, { min: 1, max: 150, step: 1 });
-        this.addWidget("number", "Ancho B (BPF)", 10, v => this.properties.bw = v, { min: 2, max: 100, step: 1 });
-        this.addWidget("number", "Orden (N)", 4, v => this.properties.orden = v, { min: 1, max: 10, step: 1 });
+        this.addWidget("combo", "Resp.", "Ideal", v => this.properties.aprox = v, { values: ["Ideal", "Butterworth"] });
+        this.addWidget("number", "fc / f0 (Hz)", 10, v => this.properties.fc = v, { min: 1, max: 150, step: 1 });
         this.addWidget("number", "Ganancia", 1.0, v => this.properties.gain = v, { min: 0.1, max: 10, step: 0.1 });
         this.addWidget("toggle", "Ver |H(f)|", true, v => this.properties.showH = v);
 
-        this.size = [215, 210];
+        this.size = [215, 190];
         applyLightStyle(this, "#99f6e4", "#ffffff");
     }
     NodoFiltro.title = "Filtro LTI";
@@ -624,46 +695,64 @@
         let in1 = this.getInputData(0);
         if (!in1) return;
 
-        const { tipo, aprox, fc, bw, orden, gain, showH } = this.properties;
-        const { dt } = getCurrentTimeVector();
+        const { tipo, aprox, fc, bw, orden, gain, showH, nombre } = this.properties;
+        const { t, dt } = getCurrentTimeVector();
 
         const H_f = f_axis.map(f => evaluateFilterH(f, tipo, aprox, fc, bw, orden, gain));
         const X_mag = computeSpectrum(in1, dt);
-        const Y_mag = X_mag.map((val, idx) => val * H_f[idx]);
-
-        const scaleTime = in1.sampledTs ? in1.sampledTs : 1.0;
-        const x_in = in1.values;
-
-        const M = 180;
-        const h = new Array(2 * M + 1).fill(0);
-
-        for (let k = -M; k <= M; k++) {
-            let tau = k * dt;
-            let sum = 0;
-            for (let i = 400; i < f_axis.length; i++) {
-                let weight = (i === 400) ? 0.5 : 1.0;
-                sum += 2 * weight * H_f[i] * Math.cos(2 * Math.PI * f_axis[i] * tau) * df;
-            }
-            h[k + M] = sum;
-        }
+        
+        // Supresión exacta de residuos fuera de la banda del filtro
+        const Y_mag = X_mag.map((val, idx) => {
+            let h = H_f[idx];
+            return h < 1e-4 ? 0 : val * h;
+        });
 
         let y = new Array(N).fill(0);
-        let norm = in1.isAnalyticDelta ? 1.0 : (dt * scaleTime);
-        for (let n = 0; n < N; n++) {
-            let acc = 0;
-            let kMin = Math.max(0, n - M);
-            let kMax = Math.min(N - 1, n + M);
-            for (let k = kMin; k <= kMax; k++) {
-                if (x_in[k] === 0) continue;
-                acc += x_in[k] * h[n - k + M];
+        if (in1.isSampledSignal && in1.sampleInstants) {
+            // Reconstrucción analítica perfecta por interpolación Whittaker-Shannon (sinc sin artefactos)
+            const Ts = in1.sampledTs;
+            const samples = in1.sampleInstants;
+            y = t.map(time => {
+                let acc = 0;
+                for (let s of samples) {
+                    let arg = (time - s.t) / Ts;
+                    let sincVal = Math.abs(arg) < 1e-6 ? 1 : Math.sin(Math.PI * arg) / (Math.PI * arg);
+                    acc += s.v * sincVal;
+                }
+                return acc * gain;
+            });
+        } else {
+            // Filtrado LTI continuo por síntesis en frecuencia
+            const M = 180;
+            const h = new Array(2 * M + 1).fill(0);
+            for (let k = -M; k <= M; k++) {
+                let tau = k * dt;
+                let sum = 0;
+                for (let i = 0; i < f_axis.length; i++) {
+                    if (f_axis[i] >= 0) {
+                        let weight = (f_axis[i] === 0) ? 0.5 : 1.0;
+                        sum += 2 * weight * H_f[i] * Math.cos(2 * Math.PI * f_axis[i] * tau) * DF_CALC;
+                    }
+                }
+                h[k + M] = sum;
             }
-            y[n] = acc * norm;
+
+            for (let n = 0; n < N; n++) {
+                let acc = 0;
+                let kMin = Math.max(0, n - M);
+                let kMax = Math.min(N - 1, n + M);
+                for (let k = kMin; k <= kMax; k++) {
+                    if (in1.values[k] === 0) continue;
+                    acc += in1.values[k] * h[n - k + M];
+                }
+                y[n] = acc * dt;
+            }
         }
 
         this.setOutputData(0, {
+            name: nombre || "y_filt(t)",
             values: y,
             discrete: false,
-            isAnalyticDelta: false,
             customSpectrum: Y_mag,
             filterOverlay: showH ? H_f : null,
             dt: dt
@@ -672,57 +761,72 @@
     LiteGraph.registerNodeType("Telecom/Filtro", NodoFiltro);
 
 
-    // --- MUESTREO IDEAL ---
+    // --- MÓDULO 9: Muestreo Ideal ---
     function NodoMuestreo() {
         this.addInput("x(t)", "signal");
         this.addOutput("xs(t)", "signal");
-        this.properties = { fs_sample: 40 };
-        this.addWidget("number", "fs (Hz)", 40, v => this.properties.fs_sample = v, { min: 4, max: 200, step: 1 });
-        this.size = [195, 75];
+        this.properties = { nombre: "xs(t)", fs_sample: 20 };
+        this.addWidget("text", "Etiqueta", "xs(t)", v => this.properties.nombre = v);
+        this.addWidget("number", "fs (Hz)", 20, v => this.properties.fs_sample = v, { min: 2, max: 200, step: 1 });
+        this.size = [195, 95];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
-    NodoMuestreo.title = "Muestreo (Tren Deltas)";
+    NodoMuestreo.title = "Muestreo Ideal (xs)";
     NodoMuestreo.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
         if (!in1) return;
         
         const fs_s = Math.max(2, this.properties.fs_sample);
         const Ts = 1 / fs_s;
-        const { tMin, dt } = getCurrentTimeVector();
+        const { tMin, tMax, dt } = getCurrentTimeVector();
+        const { nombre } = this.properties;
 
         let sampledValues = new Array(N).fill(0);
         let customX = [];
         let customY = [];
+        let sampleInstants = [];
 
-        const maxN = Math.floor(10.0 / Ts);
+        const maxN = Math.floor(Math.max(Math.abs(tMin), Math.abs(tMax)) / Ts) + 2;
         for (let n = -maxN; n <= maxN; n++) {
             let tSample = n * Ts;
-            let exactIdx = (tSample - tMin) / dt;
-            let i0 = Math.floor(exactIdx);
-            if (i0 >= 0 && i0 < N - 1) {
-                let frac = exactIdx - i0;
-                let val = in1.values[i0] * (1 - frac) + in1.values[i0 + 1] * frac;
-                sampledValues[Math.round(exactIdx)] = val;
-                customX.push(tSample);
-                customY.push(val);
+            if (tSample >= tMin && tSample <= tMax) {
+                let exactIdx = (tSample - tMin) / dt;
+                let i0 = Math.floor(exactIdx);
+                if (i0 >= 0 && i0 < N - 1) {
+                    let frac = exactIdx - i0;
+                    let val = in1.values[i0] * (1 - frac) + in1.values[i0 + 1] * frac;
+                    sampledValues[Math.round(exactIdx)] = val;
+                    customX.push(tSample);
+                    customY.push(val);
+                    sampleInstants.push({ t: tSample, v: val });
+                }
             }
         }
 
+        // Espectro con réplicas puras convolucionadas con tren de deltas
         const baseSpec = computeSpectrum(in1, dt);
         const replicatedSpec = f_axis.map(f => {
             let sum = 0;
-            for (let k = -8; k <= 8; k++) {
-                sum += interpFreq(baseSpec, f - k * fs_s);
+            for (let k = -10; k <= 10; k++) {
+                let targetF = f - k * fs_s;
+                let idx = (targetF + F_MAX_CALC) / DF_CALC;
+                if (idx >= 0 && idx < f_axis.length - 1) {
+                    let i0 = Math.floor(idx);
+                    let frac = idx - i0;
+                    sum += baseSpec[i0] * (1 - frac) + baseSpec[i0 + 1] * frac;
+                }
             }
             return sum;
         });
 
         this.setOutputData(0, { 
+            name: nombre || "xs(t)",
             values: sampledValues, 
             stemX: customX,
             stemY: customY,
+            sampleInstants: sampleInstants,
+            isSampledSignal: true,
             discrete: true, 
-            isAnalyticDelta: false,
             customSpectrum: replicatedSpec,
             sampledTs: Ts,
             dt: dt
@@ -731,40 +835,41 @@
     LiteGraph.registerNodeType("Telecom/Muestreo", NodoMuestreo);
 
 
-    // --- MODULADOR AM ---
+    // --- MÓDULO 10: Modulador AM ---
     function NodoModuladorAM() {
         this.addInput("m(t)", "signal");
         this.addOutput("s_AM(t)", "signal");
-        this.properties = { fc: 35, mu: 0.7, Ac: 1 };
-        this.addWidget("number", "Portadora (Hz)", 35, v => this.properties.fc = v, { min: 5, max: 100, step: 1 });
-        this.addWidget("number", "Índice Mod (μ)", 0.7, v => this.properties.mu = v, { min: 0, max: 2, step: 0.1 });
-        this.addWidget("number", "Amplitud (Ac)", 1, v => this.properties.Ac = v, { min: 0.5, max: 5, step: 0.5 });
-        this.size = [210, 115];
+        this.properties = { nombre: "s_AM(t)", fc: 25, mu: 0.8, Ac: 1 };
+        this.addWidget("text", "Etiqueta", "s_AM(t)", v => this.properties.nombre = v);
+        this.addWidget("number", "Portadora fc", 25, v => this.properties.fc = v, { min: 5, max: 100, step: 1 });
+        this.addWidget("number", "Índice Mod μ", 0.8, v => this.properties.mu = v, { min: 0, max: 2, step: 0.1 });
+        this.addWidget("number", "Amplitud Ac", 1, v => this.properties.Ac = v, { min: 0.5, max: 5, step: 0.5 });
+        this.size = [210, 135];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorAM.title = "Modulador AM";
     NodoModuladorAM.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
         if (!in1) return;
-        const { fc, mu, Ac } = this.properties;
+        const { fc, mu, Ac, nombre } = this.properties;
         const { t, dt } = getCurrentTimeVector();
         
         let values = t.map((time, idx) => {
             return Ac * (1 + mu * in1.values[idx]) * Math.cos(2 * Math.PI * fc * time);
         });
-        this.setOutputData(0, { values, discrete: false, isAnalyticDelta: false, dt: dt });
+        this.setOutputData(0, { name: nombre || "s_AM(t)", values, discrete: false, dt: dt });
     };
     LiteGraph.registerNodeType("Telecom/ModuladorAM", NodoModuladorAM);
 
 
-    // --- MODULADOR FM ---
+    // --- MÓDULO 11: Modulador FM ---
     function NodoModuladorFM() {
         this.addInput("m(t)", "signal");
         this.addOutput("s_FM(t)", "signal");
-        this.properties = { fc: 35, beta: 2, Ac: 1 };
-        this.addWidget("number", "Portadora (Hz)", 35, v => this.properties.fc = v, { min: 5, max: 100, step: 1 });
-        this.addWidget("number", "Índice (β)", 2, v => this.properties.beta = v, { min: 0.1, max: 10, step: 0.5 });
-        this.addWidget("number", "Amplitud (Ac)", 1, v => this.properties.Ac = v, { min: 0.5, max: 5, step: 0.5 });
+        this.properties = { nombre: "s_FM(t)", fc: 25, beta: 2, Ac: 1 };
+        this.addWidget("text", "Etiqueta", "s_FM(t)", v => this.properties.nombre = v);
+        this.addWidget("number", "Portadora fc", 25, v => this.properties.fc = v, { min: 5, max: 100, step: 1 });
+        this.addWidget("number", "Índice β", 2, v => this.properties.beta = v, { min: 0.1, max: 10, step: 0.5 });
         this.size = [210, 115];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
@@ -772,7 +877,7 @@
     NodoModuladorFM.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
         if (!in1) return;
-        const { fc, beta, Ac } = this.properties;
+        const { fc, beta, Ac, nombre } = this.properties;
         const { t, dt } = getCurrentTimeVector();
         
         let integral = 0;
@@ -780,18 +885,18 @@
             integral += in1.values[idx] * dt;
             return Ac * Math.cos(2 * Math.PI * fc * time + 2 * Math.PI * beta * 5 * integral);
         });
-        this.setOutputData(0, { values, discrete: false, isAnalyticDelta: false, dt: dt });
+        this.setOutputData(0, { name: nombre || "s_FM(t)", values, discrete: false, dt: dt });
     };
     LiteGraph.registerNodeType("Telecom/ModuladorFM", NodoModuladorFM);
 
 
-    // --- DETECTOR DE ENVOLVENTE ---
+    // --- MÓDULO 12: Detector de Envolvente ---
     function NodoDetectorEnvolvente() {
-        this.addInput("s_AM(t)", "signal");
-        this.addOutput("m_rec(t)", "signal");
-        this.properties = { rect: "Onda Completa |x|", tau: 0.04, removeDC: false };
+        this.addInput("s_AM", "signal");
+        this.addOutput("m_rec", "signal");
+        this.properties = { nombre: "m_rec(t)", tau: 0.04, removeDC: false };
 
-        this.addWidget("combo", "Rectif.", "Onda Completa |x|", v => this.properties.rect = v, { values: ["Onda Completa |x|", "Media Onda"] });
+        this.addWidget("text", "Etiqueta", "m_rec(t)", v => this.properties.nombre = v);
         this.addWidget("number", "Tau RC (s)", 0.04, v => this.properties.tau = v, { min: 0.002, max: 0.3, step: 0.005 });
         this.addWidget("toggle", "Quitar DC", false, v => this.properties.removeDC = v);
 
@@ -803,7 +908,7 @@
         let in1 = this.getInputData(0);
         if (!in1) return;
 
-        const { rect, tau, removeDC } = this.properties;
+        const { tau, removeDC, nombre } = this.properties;
         const { dt } = getCurrentTimeVector();
         const x = in1.values;
         let env = new Array(N).fill(0);
@@ -812,12 +917,9 @@
         let vCap = 0;
 
         for (let i = 0; i < N; i++) {
-            let vRect = (rect === "Onda Completa |x|") ? Math.abs(x[i]) : Math.max(0, x[i]);
-            if (vRect >= vCap) {
-                vCap = vRect;
-            } else {
-                vCap *= decay;
-            }
+            let vRect = Math.abs(x[i]);
+            if (vRect >= vCap) vCap = vRect;
+            else vCap *= decay;
             env[i] = vCap;
         }
 
@@ -826,12 +928,39 @@
             env = env.map(v => v - mean);
         }
 
-        this.setOutputData(0, { values: env, discrete: false, isAnalyticDelta: false, dt: dt });
+        this.setOutputData(0, { name: nombre || "m_rec", values: env, discrete: false, dt: dt });
     };
     LiteGraph.registerNodeType("Telecom/DetectorEnvolvente", NodoDetectorEnvolvente);
 
 
-    // --- OSCILOSCOPIOS SELECCIONABLES ---
+    // --- MÓDULO 13: Subsistema (Caja Anidada Doble Clic) ---
+    function NodoSubgrafo() {
+        this.addInput("In", "signal");
+        this.addOutput("Out", "signal");
+        this.properties = { nombre: "Subsistema" };
+        this.addWidget("text", "Nombre", "Subsistema", v => this.properties.nombre = v);
+
+        // Crear grafo secundario anidado
+        this.subgraph = new LiteGraph.LGraph();
+        this.subgraph._subgraph_node = this;
+
+        this.size = [180, 80];
+        applyLightStyle(this, "#fbcfe8", "#ffffff");
+    }
+    NodoSubgrafo.title = "Subsistema";
+    NodoSubgrafo.prototype.onDblClick = function() {
+        enterSubgraph(this);
+    };
+    NodoSubgrafo.prototype.onExecute = function() {
+        let inputData = this.getInputData(0);
+        // Si hay nodos dentro del subgrafo, propaga los datos
+        this.subgraph.runStep(1);
+        this.setOutputData(0, inputData);
+    };
+    LiteGraph.registerNodeType("Telecom/Subgrafo", NodoSubgrafo);
+
+
+    // --- MÓDULO 14: Osciloscopio ---
     let oscCounter = 1;
     const activeOscilloscopes = new Map();
 
@@ -887,7 +1016,7 @@
 
 
     // ==========================================
-    // 3. RENDERIZADO DE GRÁFICAS DINÁMICAS (STEM REAL)
+    // 3. RENDERIZADO DE GRÁFICAS Y NOMBRES
     // ==========================================
     let lastPlotTime = 0;
     function forcePlotUpdate() {
@@ -896,6 +1025,9 @@
     }
 
     function updatePlots() {
+        const panel = document.getElementById("plot-panel");
+        if (panel.classList.contains("hidden")) return;
+
         let now = performance.now();
         if (now - lastPlotTime < 75) return;
         lastPlotTime = now;
@@ -906,17 +1038,17 @@
         const in1 = oscNode ? oscNode.lastSignal : null;
 
         const { t, tMin, tMax, dt } = getCurrentTimeVector();
-        const fMax = Math.abs(parseFloat(document.getElementById("fMax").value)) || 100;
+        const fMax = Math.abs(parseFloat(document.getElementById("fMax").value)) || 50;
 
         const oscName = oscNode ? oscNode.properties.nombre : "Sin Osciloscopio activo";
+        const sigName = (in1 && in1.name) ? in1.name : "Señal";
         const y = in1 ? in1.values : new Array(N).fill(0);
         const isDisc = in1 ? in1.discrete : false;
 
         let timeTraces = [];
-        let xLabel = isDisc ? "$n$ (índice entero)" : "Tiempo t (s)";
+        let xLabel = isDisc ? "n (índice entero)" : "Tiempo t (s)";
 
         if (isDisc && in1 && in1.stemX) {
-            // Construcción correcta de tipo stem (tallo vertical + marcador superior)[cite: 1]
             let stemX_lines = [];
             let stemY_lines = [];
             for (let i = 0; i < in1.stemX.length; i++) {
@@ -924,7 +1056,6 @@
                 stemY_lines.push(0, in1.stemY[i], null);
             }
 
-            // Tallo vertical
             timeTraces.push({
                 x: stemX_lines,
                 y: stemY_lines,
@@ -933,14 +1064,13 @@
                 line: { color: '#2563eb', width: 1.5 },
                 showlegend: false
             });
-            // Marcador superior
             timeTraces.push({
                 x: in1.stemX,
                 y: in1.stemY,
                 type: 'scatter',
                 mode: 'markers',
-                marker: { color: '#1d4ed8', size: 7 },
-                name: 'x[n]'
+                marker: { color: '#1d4ed8', size: 6 },
+                name: sigName
             });
         } else {
             timeTraces.push({
@@ -949,17 +1079,18 @@
                 type: 'scatter',
                 mode: 'lines',
                 line: { color: '#2563eb', width: 2 },
-                name: 'x(t)'
+                name: sigName
             });
         }
 
         Plotly.react('plot-time', timeTraces, {
-            title: { text: `<b>Dominio del Tiempo — ${oscName}</b>`, font: { size: 13, color: '#1e293b' } },
+            title: { text: `<b>Dominio del Tiempo — ${oscName}</b> [${sigName}]`, font: { size: 12, color: '#1e293b' } },
             xaxis: { title: xLabel, range: [tMin, tMax], gridcolor: '#e2e8f0', zerolinecolor: '#94a3b8' },
             yaxis: { title: 'Amplitud (V)', gridcolor: '#e2e8f0', zerolinecolor: '#94a3b8' },
-            margin: { t: 36, b: 38, l: 50, r: 18 },
+            margin: { t: 34, b: 36, l: 48, r: 16 },
             paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
-            showlegend: false
+            showlegend: true,
+            legend: { x: 0.7, y: 0.98, bgcolor: 'rgba(255,255,255,0.7)' }
         }, { responsive: true, displayModeBar: false });
 
         let signalDt = in1 && in1.dt ? in1.dt : dt;
@@ -972,7 +1103,7 @@
             fill: 'tozeroy',
             fillcolor: 'rgba(225, 29, 72, 0.12)',
             line: { color: '#e11d48', width: 2 },
-            name: '|X(f)|'
+            name: `|${sigName}(f)|`
         }];
 
         if (in1 && in1.filterOverlay) {
@@ -990,60 +1121,124 @@
         }
 
         Plotly.react('plot-freq', freqTraces, {
-            title: { text: `<b>Espectro de Frecuencia — ${oscName}</b>`, font: { size: 13, color: '#1e293b' } },
+            title: { text: `<b>Espectro de Frecuencia — ${oscName}</b>`, font: { size: 12, color: '#1e293b' } },
             xaxis: { title: 'Frecuencia f (Hz)', range: [-fMax, fMax], gridcolor: '#e2e8f0', zerolinecolor: '#94a3b8' },
             yaxis: { title: 'Magnitud', rangemode: 'tozero', gridcolor: '#e2e8f0', zerolinecolor: '#94a3b8' },
-            margin: { t: 36, b: 38, l: 50, r: 18 },
+            margin: { t: 34, b: 36, l: 48, r: 16 },
             paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
-            legend: { x: 0.75, y: 0.95, bgcolor: 'rgba(255,255,255,0.8)' }
+            showlegend: true,
+            legend: { x: 0.7, y: 0.98, bgcolor: 'rgba(255,255,255,0.7)' }
         }, { responsive: true, displayModeBar: false });
     }
 
     // ==========================================
-    // 4. INICIALIZACIÓN DEL LIENZO Y EVENTOS
+    // 4. CONTROL DEL LIENZO, RESOLUCIÓN Y SUBSISTEMAS
     // ==========================================
-    const graph = new LiteGraph.LGraph();
+    const mainGraph = new LiteGraph.LGraph();
+    let currentGraph = mainGraph;
     const canvasElement = document.getElementById("mycanvas");
-    const canvas = new LiteGraph.LGraphCanvas(canvasElement, graph);
+    const canvas = new LiteGraph.LGraphCanvas(canvasElement, mainGraph);
 
     canvas.background_image = null;
     canvas.clear_background_color = "#f1f5f9";
     canvas.render_curved_connections = true;
-    canvas.render_connection_arrows = false;
     canvas.default_link_color = "#64748b";
 
-    canvas.onNodeSelected = function(node) {
-        if (node && node.type === "Telecom/Osciloscopio") {
-            const sel = document.getElementById("oscSelect");
-            sel.value = String(node.id);
-            forcePlotUpdate();
-        }
-    };
-
-    setInterval(() => {
-        if (graph.status !== LiteGraph.LGraph.STATUS_RUNNING) {
-            graph.start();
-        }
-        updatePlots();
-    }, 80);
-
+    // Mejora de Resolución para Pantallas Retina / 4K
     function resizeCanvas() {
         const container = document.getElementById("canvas-container");
-        canvas.resize(container.clientWidth, container.clientHeight);
+        const dpr = window.devicePixelRatio || 1;
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+
+        canvasElement.width = w * dpr;
+        canvasElement.height = h * dpr;
+        canvasElement.style.width = w + "px";
+        canvasElement.style.height = h + "px";
+
+        canvas.setCanvasSize(w, h);
+        if (canvas.ctx) canvas.ctx.scale(dpr, dpr);
+
         Plotly.Plots.resize('plot-time');
         Plotly.Plots.resize('plot-freq');
+        canvas.setDirty(true, true);
     }
     window.addEventListener("resize", resizeCanvas);
+
+    // Navegación en Subgrafos
+    function enterSubgraph(node) {
+        currentGraph = node.subgraph;
+        canvas.setGraph(currentGraph);
+        document.getElementById("subgraph-banner").style.display = "block";
+    }
+
+    function exitSubgraph() {
+        currentGraph = mainGraph;
+        canvas.setGraph(mainGraph);
+        document.getElementById("subgraph-banner").style.display = "none";
+    }
+
+    // ==========================================
+    // 5. REDIMENSIONADO Y OCULTACIÓN DEL PANEL
+    // ==========================================
+    const resizer = document.getElementById("resizer");
+    const plotPanel = document.getElementById("plot-panel");
+    let isDragging = false;
+
+    resizer.addEventListener("mousedown", () => {
+        isDragging = true;
+        resizer.classList.add("dragging");
+        document.body.style.cursor = "col-resize";
+    });
+
+    window.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        const newWidth = window.innerWidth - e.clientX;
+        if (newWidth > 260 && newWidth < window.innerWidth * 0.8) {
+            plotPanel.style.width = newWidth + "px";
+            resizeCanvas();
+        }
+    });
+
+    window.addEventListener("mouseup", () => {
+        if (isDragging) {
+            isDragging = false;
+            resizer.classList.remove("dragging");
+            document.body.style.cursor = "default";
+            resizeCanvas();
+        }
+    });
+
+    function togglePlotPanel() {
+        const btn = document.getElementById("toggle-panel-btn");
+        if (plotPanel.classList.contains("hidden")) {
+            plotPanel.classList.remove("hidden");
+            resizer.style.display = "block";
+            btn.innerText = "👁️ Ocultar Gráficas";
+        } else {
+            plotPanel.classList.add("hidden");
+            resizer.style.display = "none";
+            btn.innerText = "👁️ Mostrar Gráficas";
+        }
+        resizeCanvas();
+    }
+
+    // ==========================================
+    // 6. INICIALIZACIÓN
+    // ==========================================
+    setInterval(() => {
+        if (mainGraph.status !== LiteGraph.LGraph.STATUS_RUNNING) {
+            mainGraph.start();
+        }
+        updatePlots();
+    }, 75);
 
     let spawnOffset = 0;
     function addModule(type) {
         let node = LiteGraph.createNode(type);
         spawnOffset = (spawnOffset + 25) % 125;
         node.pos = [50 + spawnOffset, 70 + spawnOffset];
-        graph.add(node);
-        if (graph.status !== LiteGraph.LGraph.STATUS_RUNNING) {
-            graph.start();
-        }
+        currentGraph.add(node);
         forcePlotUpdate();
     }
 
@@ -1054,18 +1249,17 @@
     }
 
     function clearCanvas() {
-        graph.clear();
+        mainGraph.clear();
         activeOscilloscopes.clear();
         oscCounter = 1;
-        spawnOffset = 0;
         syncOscSelector();
-        graph.start();
+        mainGraph.start();
         forcePlotUpdate();
     }
 
-    // El lienzo arranca vacío por completo sin elementos predefinidos.
+    // Inicio limpio con lienzo vacío
     resizeCanvas();
-    graph.start();
+    mainGraph.start();
 </script>
 
 </body>
