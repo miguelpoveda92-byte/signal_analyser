@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Simulador Modular de Telecomunicaciones</title>
     <!-- LiteGraph.js -->
     <link rel="stylesheet" type="text/css" href="https://tamats.com/projects/litegraph/css/litegraph.css">
@@ -16,6 +16,7 @@
             margin: 0; padding: 0; display: flex; height: 100vh; width: 100vw; 
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
             background: #f8fafc; color: #1e293b; overflow: hidden;
+            touch-action: manipulation;
         }
         
         /* 1. Panel Lateral */
@@ -43,7 +44,15 @@
 
         /* 2. Lienzo Central */
         #canvas-container { flex: 1; position: relative; height: 100%; background: #f1f5f9; overflow: hidden; }
-        #mycanvas { display: block; width: 100%; height: 100%; }
+        #mycanvas { 
+            display: block; 
+            width: 100%; 
+            height: 100%; 
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
 
         #subgraph-banner {
             display: none; position: absolute; top: 12px; left: 16px; z-index: 20;
@@ -54,6 +63,20 @@
             background: #38bdf8; border: none; color: #0f172a; font-weight: 600;
             padding: 4px 10px; margin-left: 10px; border-radius: 4px; cursor: pointer;
         }
+
+        /* Botones flotantes de Zoom en Lienzo para Móvil */
+        #mobile-zoom-controls {
+            position: absolute; bottom: 16px; left: 16px; z-index: 25;
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .zoom-btn {
+            width: 38px; height: 38px; border-radius: 8px;
+            background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b;
+            font-size: 1.1rem; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+            touch-action: manipulation;
+        }
+        .zoom-btn:active { background: #e2e8f0; transform: scale(0.95); }
 
         /* Barra Divisoria Redimensionable */
         #resizer {
@@ -81,12 +104,10 @@
         }
         .ctrl-item input[type="number"] { width: 58px; }
         
-        /* Contenedores de Gráfica Compensados */
         .plot-container { 
             flex: 1; width: 100%; min-height: 240px; border-bottom: 1px solid #f1f5f9; 
             transition: max-height 0.2s ease;
         }
-        /* Cuando el espectro se oculta, la gráfica de tiempo se limita a una altura compensada */
         #plot-panel.single-plot #plot-time {
             flex: 0 0 auto;
             height: 480px;
@@ -184,6 +205,12 @@
             <button onclick="exitSubgraph()">⬅ Volver al sistema principal</button>
         </div>
         <button id="toggle-panel-btn" onclick="togglePlotPanel()">👁️ Ocultar Gráficas</button>
+        <!-- Controles flotantes de Zoom en pantalla (móvil) -->
+        <div id="mobile-zoom-controls">
+            <button class="zoom-btn" onclick="applyZoom(1.2)" title="Acercar (Zoom In)">➕</button>
+            <button class="zoom-btn" onclick="applyZoom(0.8)" title="Alejar (Zoom Out)">➖</button>
+            <button class="zoom-btn" onclick="resetView()" title="Centrar">⛶</button>
+        </div>
         <canvas id="mycanvas"></canvas>
     </div>
     
@@ -199,13 +226,13 @@
             </div>
             <div class="ctrl-item">
                 <label>Tiempo (s):</label>
-                <input type="number" id="tMin" value="-2.0" step="0.5" onchange="onTimeRangeChanged()">
+                <input type="number" id="tMin" value="-5.0" step="0.5" oninput="onTimeRangeChanged()" onchange="onTimeRangeChanged()">
                 <span>a</span>
-                <input type="number" id="tMax" value="2.0" step="0.5" onchange="onTimeRangeChanged()">
+                <input type="number" id="tMax" value="5.0" step="0.5" oninput="onTimeRangeChanged()" onchange="onTimeRangeChanged()">
             </div>
             <div class="ctrl-item">
                 <label>Frec ±(Hz):</label>
-                <input type="number" id="fMax" value="50" step="5" min="5" max="200" onchange="forcePlotUpdate()">
+                <input type="number" id="fMax" value="5" step="0.5" min="0.1" max="500" oninput="forcePlotUpdate()" onchange="forcePlotUpdate()">
             </div>
             <div class="ctrl-item">
                 <button class="action-btn" id="btnToggleFreq" style="padding: 2px 7px; margin:0;" onclick="toggleFreqPlot()">Ocultar |X(f)|</button>
@@ -217,15 +244,15 @@
 
 <script>
     // ==========================================
-    // 1. MOTOR MATEMÁTICO DINÁMICO
+    // 1. MOTOR MATEMÁTICO ADAPTATIVO
     // ==========================================
     const N = 1000;
     let dirtyPlots = true;
     let showFreqSpectrum = true;
 
     function getCurrentTimeVector() {
-        let tMin = parseFloat(document.getElementById("tMin").value) || -2.0;
-        let tMax = parseFloat(document.getElementById("tMax").value) || 2.0;
+        let tMin = parseFloat(document.getElementById("tMin").value) || -5.0;
+        let tMax = parseFloat(document.getElementById("tMax").value) || 5.0;
         if (tMin >= tMax) tMin = tMax - 0.1;
 
         let dt = (tMax - tMin) / (N - 1);
@@ -236,14 +263,25 @@
         return { t: timeArray, dt: dt, tMin: tMin, tMax: tMax, T: (tMax - tMin) };
     }
 
-    const F_MAX_CALC = 120;
-    const DF_CALC = 0.2;
-    const f_axis = Array.from({length: Math.round(2 * F_MAX_CALC / DF_CALC) + 1}, (_, i) => -F_MAX_CALC + i * DF_CALC);
+    // Cuadrícula en frecuencia adaptativa: 601 puntos siempre dentro de [-fMax, +fMax]
+    function getActiveFrequencyAxis(fMax) {
+        const NUM_FREQ_POINTS = 601;
+        const df = (2 * fMax) / (NUM_FREQ_POINTS - 1);
+        const axis = new Array(NUM_FREQ_POINTS);
+        for (let i = 0; i < NUM_FREQ_POINTS; i++) {
+            axis[i] = -fMax + i * df;
+        }
+        return { axis: axis, df: df };
+    }
 
-    function computeSpectrum(signalObj, currentDt) {
-        if (!signalObj) return new Array(f_axis.length).fill(0);
-        if (signalObj.customSpectrum) return signalObj.customSpectrum;
-        if (signalObj.isAnalyticDelta) return f_axis.map(() => signalObj.deltaWeight);
+    function computeSpectrum(signalObj, currentDt, active_f_axis) {
+        if (!signalObj) return new Array(active_f_axis.length).fill(0);
+        if (signalObj.isAnalyticDelta) return active_f_axis.map(() => signalObj.deltaWeight);
+
+        // Muestreo ideal: replicas de Nyquist adaptativas
+        if (signalObj.isSampledSignal && signalObj.inputSignal) {
+            return computeSampledSpectrum(signalObj.inputSignal, currentDt, active_f_axis, signalObj.fs_sample);
+        }
 
         const x = signalObj.values;
         const isDisc = signalObj.discrete;
@@ -251,7 +289,7 @@
         if (isDisc && signalObj.stemX && signalObj.stemY) {
             const n_vals = signalObj.stemX;
             const x_vals = signalObj.stemY;
-            return f_axis.map(f => {
+            return active_f_axis.map(f => {
                 let re = 0, im = 0;
                 for (let i = 0; i < n_vals.length; i++) {
                     let n = n_vals[i];
@@ -268,7 +306,7 @@
             const normFactor = signalObj.isPeriodic ? (2.0 / T_win) : 1.0;
             let currentT = getCurrentTimeVector().t;
 
-            return f_axis.map(f => {
+            return active_f_axis.map(f => {
                 let re = 0, im = 0;
                 for (let n = 0; n < N; n++) {
                     if (x[n] === 0) continue;
@@ -279,6 +317,36 @@
                 return Math.sqrt(re * re + im * im) * currentDt * normFactor;
             });
         }
+    }
+
+    // Espectro de señal muestreada replicado con interpolación suave
+    function computeSampledSpectrum(inputSignal, dt, f_axis_active, fs_sample) {
+        const fMaxActive = Math.abs(f_axis_active[f_axis_active.length - 1]);
+        const K = Math.min(10, Math.ceil(fMaxActive / fs_sample) + 2);
+        const fExtMax = fMaxActive + (K + 1) * fs_sample;
+        const NUM_EXT = 1201;
+        const dfExt = (2 * fExtMax) / (NUM_EXT - 1);
+
+        const ext_axis = new Array(NUM_EXT);
+        for (let i = 0; i < NUM_EXT; i++) ext_axis[i] = -fExtMax + i * dfExt;
+
+        const baseSpecExt = computeSpectrum(inputSignal, dt, ext_axis);
+
+        function interpExt(fVal) {
+            let idx = (fVal + fExtMax) / dfExt;
+            if (idx < 0 || idx >= NUM_EXT - 1) return 0;
+            let i0 = Math.floor(idx);
+            let frac = idx - i0;
+            return baseSpecExt[i0] * (1 - frac) + baseSpecExt[i0 + 1] * frac;
+        }
+
+        return f_axis_active.map(f => {
+            let sum = 0;
+            for (let k = -K; k <= K; k++) {
+                sum += interpExt(f - k * fs_sample);
+            }
+            return sum;
+        });
     }
 
     function evaluateFilterH(f, tipo, aprox, fc, bw, orden, gain) {
@@ -312,14 +380,14 @@
     // 2. MÓDULOS DE SIMULACIÓN
     // ==========================================
 
-    // --- GENERADOR CONTINUO (Con función de muestreo analítica continua) ---
+    // --- GENERADOR CONTINUO ---
     function NodoGeneradorContinuo() {
         this.addOutput("x(t)", "signal");
-        this.properties = { nombre: "x(t)", tipo: "Coseno", amp: 1, freq: 5, ancho: 0.8, tau: 0.5 };
+        this.properties = { nombre: "x(t)", tipo: "Pulso Rectangular", amp: 1, freq: 5, ancho: 4.0, tau: 0.5 };
         
         const that = this;
         this.wName = this.addWidget("text", "Etiqueta", "x(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.wType = this.addWidget("combo", "Señal", "Coseno", v => {
+        this.wType = this.addWidget("combo", "Señal", "Pulso Rectangular", v => {
             that.properties.tipo = v;
             that.updateWidgetVisibility();
             dirtyPlots = true;
@@ -327,7 +395,7 @@
         
         this.wAmp = this.addWidget("number", "Amplitud", 1, v => { that.properties.amp = Number(v); dirtyPlots = true; }, { min: 0.1, max: 10, step: 0.1 });
         this.wFreq = this.addWidget("number", "Frec (Hz)", 5, v => { that.properties.freq = Number(v); dirtyPlots = true; }, { min: 0.2, max: 50, step: 0.5 });
-        this.wAncho = this.addWidget("number", "Ancho Pulso", 0.8, v => { that.properties.ancho = Number(v); dirtyPlots = true; }, { min: 0.1, max: 5.0, step: 0.1 });
+        this.wAncho = this.addWidget("number", "Ancho Pulso", 4.0, v => { that.properties.ancho = Number(v); dirtyPlots = true; }, { min: 0.1, max: 20.0, step: 0.2 });
         this.wTau = this.addWidget("number", "Tau τ (s)", 0.5, v => { that.properties.tau = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.05, max: 5.0, step: 0.05 });
         
         this.updateWidgetVisibility();
@@ -660,7 +728,7 @@
     LiteGraph.registerNodeType("Telecom/Multiplicador", NodoMultiplicador);
 
 
-    // --- CONVOLUCIÓN EXACTA (Sin Efecto de Borde en Límites) ---
+    // --- CONVOLUCIÓN EXACTA (Sin Efecto de Borde) ---
     function NodoConvolucion() {
         this.addInput("x", "signal");
         this.addInput("h", "signal");
@@ -722,22 +790,14 @@
                 dt: dt
             });
         } else {
-            // CORRECCIÓN CONVOLUCIÓN CONTINUA:
-            // Para evitar que en los extremos caiga a 0 por falta de soporte temporal,
-            // extendemos la integración temporal hacia el pasado y futuro (padding analítico)
             const T_span = Math.max(8.0, (tMax - tMin) * 2.0);
             const dt_conv = Math.max(0.005, dt * 1.5);
             const n_steps = Math.floor(T_span / dt_conv);
 
-            let node1 = in1.sourceNode;
-            let node2 = in2.sourceNode;
-
-            // Función evaluadora que consulta la función analítica o interpola con padding de borde
             function sampleSig(sigObj, time) {
                 if (sigObj.sourceNode && typeof sigObj.sourceNode.evalAt === "function") {
                     return sigObj.sourceNode.evalAt(time, dt_conv);
                 }
-                // Si no hay nodo analítico, retener el último valor si es escalón o 0 si fuera de soporte
                 if (time < tMin) return sigObj.values[0];
                 if (time > tMax) return sigObj.values[sigObj.values.length - 1];
                 let idx = (time - tMin) / dt;
@@ -750,7 +810,6 @@
             for (let idxT = 0; idxT < N; idxT++) {
                 let current_t = t[idxT];
                 let sum = 0;
-                // Integral y(t) = int x(tau) h(t - tau) dtau evaluada en un rango amplio de tau
                 for (let k = -n_steps; k <= n_steps; k++) {
                     let tau = k * dt_conv;
                     let valX = sampleSig(in1, tau);
@@ -772,7 +831,7 @@
     LiteGraph.registerNodeType("Telecom/Convolucion", NodoConvolucion);
 
 
-    // --- FILTRO LTI ---
+    // --- FILTRO LTI (Independiente de la rejilla visual) ---
     function NodoFiltro() {
         this.addInput("x(t)", "signal");
         this.addOutput("y(t)", "signal");
@@ -785,7 +844,7 @@
         this.addWidget("text", "Etiqueta", "y_filt(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.addWidget("combo", "Tipo", "Paso Bajo (LPF)", v => { that.properties.tipo = v; dirtyPlots = true; }, { values: ["Paso Bajo (LPF)", "Paso Alto (HPF)", "Paso Banda (BPF)"] });
         this.addWidget("combo", "Resp.", "Ideal", v => { that.properties.aprox = v; dirtyPlots = true; }, { values: ["Ideal", "Butterworth"] });
-        this.addWidget("number", "fc / f0 (Hz)", 10, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 1, max: 150, step: 1 });
+        this.addWidget("number", "fc / f0 (Hz)", 10, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 0.2, max: 150, step: 0.5 });
         this.addWidget("number", "Ganancia", 1.0, v => { that.properties.gain = Number(v); dirtyPlots = true; }, { min: 0.1, max: 10, step: 0.1 });
         this.addWidget("toggle", "Ver |H(f)|", true, v => { that.properties.showH = Boolean(v); dirtyPlots = true; });
 
@@ -799,10 +858,6 @@
 
         const { tipo, aprox, fc, bw, orden, gain, showH, nombre } = this.properties;
         const { t, dt } = getCurrentTimeVector();
-
-        const H_f = f_axis.map(f => evaluateFilterH(f, tipo, aprox, fc, bw, orden, gain));
-        const X_mag = computeSpectrum(in1, dt);
-        const Y_mag = X_mag.map((val, idx) => (H_f[idx] < 1e-4) ? 0 : val * H_f[idx]);
 
         let y = new Array(N).fill(0);
         if (in1.isSampledSignal && in1.sampleInstants) {
@@ -818,15 +873,20 @@
                 return acc * gain;
             });
         } else {
+            // Rejilla interna precisa para síntesis de h(t)
+            const N_FILT = 801;
+            const F_FILT_MAX = 150;
+            const df_filt = F_FILT_MAX / (N_FILT - 1);
             const M = 150;
             const h = new Array(2 * M + 1).fill(0);
+
             for (let k = -M; k <= M; k++) {
                 let tau = k * dt, sum = 0;
-                for (let i = 0; i < f_axis.length; i++) {
-                    if (f_axis[i] >= 0) {
-                        let weight = (f_axis[i] === 0) ? 0.5 : 1.0;
-                        sum += 2 * weight * H_f[i] * Math.cos(2 * Math.PI * f_axis[i] * tau) * DF_CALC;
-                    }
+                for (let i = 0; i < N_FILT; i++) {
+                    let f_val = i * df_filt;
+                    let H_val = evaluateFilterH(f_val, tipo, aprox, fc, bw, orden, gain);
+                    let weight = (i === 0) ? 0.5 : 1.0;
+                    sum += 2 * weight * H_val * Math.cos(2 * Math.PI * f_val * tau) * df_filt;
                 }
                 h[k + M] = sum;
             }
@@ -847,8 +907,7 @@
             values: y,
             discrete: false,
             isPeriodic: in1.isPeriodic,
-            customSpectrum: Y_mag,
-            filterOverlay: showH ? H_f : null,
+            filterParams: { tipo, aprox, fc, bw, orden, gain, showH },
             dt: dt
         });
     };
@@ -862,7 +921,7 @@
         this.properties = { nombre: "xs(t)", fs_sample: 20 };
         const that = this;
         this.addWidget("text", "Etiqueta", "xs(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "fs (Hz)", 20, v => { that.properties.fs_sample = Number(v); dirtyPlots = true; }, { min: 2, max: 200, step: 1 });
+        this.addWidget("number", "fs (Hz)", 20, v => { that.properties.fs_sample = Number(v); dirtyPlots = true; }, { min: 0.5, max: 200, step: 0.5 });
         this.size = [195, 95];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
@@ -871,7 +930,7 @@
         let in1 = this.getInputData(0);
         if (!in1) return;
         
-        const fs_s = Math.max(2, this.properties.fs_sample);
+        const fs_s = Math.max(0.5, this.properties.fs_sample);
         const Ts = 1 / fs_s;
         const { tMin, tMax, dt } = getCurrentTimeVector();
         const { nombre } = this.properties;
@@ -896,21 +955,6 @@
             }
         }
 
-        const baseSpec = computeSpectrum(in1, dt);
-        const replicatedSpec = f_axis.map(f => {
-            let sum = 0;
-            for (let k = -10; k <= 10; k++) {
-                let targetF = f - k * fs_s;
-                let idx = (targetF + F_MAX_CALC) / DF_CALC;
-                if (idx >= 0 && idx < f_axis.length - 1) {
-                    let i0 = Math.floor(idx);
-                    let frac = idx - i0;
-                    sum += baseSpec[i0] * (1 - frac) + baseSpec[i0 + 1] * frac;
-                }
-            }
-            return sum;
-        });
-
         this.setOutputData(0, { 
             name: nombre || "xs(t)",
             values: sampledValues, 
@@ -918,8 +962,9 @@
             stemY: customY,
             sampleInstants: sampleInstants,
             isSampledSignal: true,
+            inputSignal: in1,
+            fs_sample: fs_s,
             discrete: true, 
-            customSpectrum: replicatedSpec,
             sampledTs: Ts,
             dt: dt
         });
@@ -934,7 +979,7 @@
         this.properties = { nombre: "s_AM(t)", fc: 25, mu: 0.8, Ac: 1 };
         const that = this;
         this.addWidget("text", "Etiqueta", "s_AM(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 5, max: 100, step: 1 });
+        this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 1, max: 100, step: 1 });
         this.addWidget("number", "Índice Mod μ", 0.8, v => { that.properties.mu = Number(v); dirtyPlots = true; }, { min: 0, max: 2, step: 0.1 });
         this.addWidget("number", "Amplitud Ac", 1, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { min: 0.5, max: 5, step: 0.5 });
         this.size = [210, 135];
@@ -960,7 +1005,7 @@
         this.properties = { nombre: "s_FM(t)", fc: 25, beta: 2, Ac: 1 };
         const that = this;
         this.addWidget("text", "Etiqueta", "s_FM(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 5, max: 100, step: 1 });
+        this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 1, max: 100, step: 1 });
         this.addWidget("number", "Índice β", 2, v => { that.properties.beta = Number(v); dirtyPlots = true; }, { min: 0.1, max: 10, step: 0.5 });
         this.size = [210, 115];
         applyLightStyle(this, "#fde68a", "#ffffff");
@@ -1197,7 +1242,7 @@
 
 
     // ==========================================
-    // 4. RENDERIZADO DE GRÁFICAS COMPENSADAS
+    // 4. RENDERIZADO DE GRÁFICAS ADAPTATIVAS
     // ==========================================
     function forcePlotUpdate() {
         dirtyPlots = true;
@@ -1208,7 +1253,6 @@
         currentGraph.runStep(1);
     }
 
-    // CORRECCIÓN VISUAL: Al ocultar el espectro, se añade la clase single-plot para no descompensar la altura
     function toggleFreqPlot() {
         showFreqSpectrum = !showFreqSpectrum;
         const btn = document.getElementById("btnToggleFreq");
@@ -1241,14 +1285,17 @@
         const in1 = oscNode ? oscNode.lastSignal : null;
 
         const { t, tMin, tMax, dt } = getCurrentTimeVector();
-        const fMax = Math.abs(parseFloat(document.getElementById("fMax").value)) || 50;
+        const fMax = Math.abs(parseFloat(document.getElementById("fMax").value)) || 5.0;
+
+        // Generar eje de frecuencia adaptado al fMax actual
+        const { axis: active_f_axis } = getActiveFrequencyAxis(fMax);
 
         const oscName = oscNode ? oscNode.properties.nombre : "Sin Osciloscopio activo";
         const sigName = (in1 && in1.name) ? in1.name : "Señal";
         const y = in1 ? in1.values : new Array(N).fill(0);
         const isDisc = in1 ? in1.discrete : false;
 
-        // Gráfica Temporal
+        // 1. Gráfica Temporal
         let timeTraces = [];
         let xLabel = isDisc ? "$n$ (índice entero)" : "Tiempo t (s)";
 
@@ -1297,12 +1344,12 @@
             legend: { x: 0.7, y: 0.98, bgcolor: 'rgba(255,255,255,0.7)' }
         }, { responsive: true, displayModeBar: false });
 
-        // Gráfica en Frecuencia
+        // 2. Gráfica en Frecuencia Adaptativa
         if (showFreqSpectrum) {
             let signalDt = in1 && in1.dt ? in1.dt : dt;
-            let spectrum = in1 ? computeSpectrum(in1, signalDt) : new Array(f_axis.length).fill(0);
+            let spectrum = in1 ? computeSpectrum(in1, signalDt, active_f_axis) : new Array(active_f_axis.length).fill(0);
             let freqTraces = [{
-                x: f_axis,
+                x: active_f_axis,
                 y: spectrum,
                 type: 'scatter',
                 mode: 'lines',
@@ -1312,12 +1359,14 @@
                 name: `|${sigName}(f)|`
             }];
 
-            if (in1 && in1.filterOverlay) {
+            if (in1 && in1.filterParams && in1.filterParams.showH) {
+                const fp = in1.filterParams;
+                const H_active = active_f_axis.map(f => evaluateFilterH(f, fp.tipo, fp.aprox, fp.fc, fp.bw, fp.orden, fp.gain));
                 let maxSpec = Math.max(...spectrum, 0.5);
-                let maxH = Math.max(...in1.filterOverlay, 1);
-                let scaledH = in1.filterOverlay.map(v => v * (maxSpec / maxH));
+                let maxH = Math.max(...H_active, 1);
+                let scaledH = H_active.map(v => v * (maxSpec / maxH));
                 freqTraces.push({
-                    x: f_axis,
+                    x: active_f_axis,
                     y: scaledH,
                     type: 'scatter',
                     mode: 'lines',
@@ -1327,7 +1376,7 @@
             }
 
             Plotly.react('plot-freq', freqTraces, {
-                title: { text: `<b>Espectro de Frecuencia — ${oscName}</b>`, font: { size: 12, color: '#1e293b' } },
+                title: { text: `<b>Espectro de Frecuencia — ${oscName}</b> (Resolución adaptativa)`, font: { size: 12, color: '#1e293b' } },
                 xaxis: { title: 'Frecuencia f (Hz)', range: [-fMax, fMax], gridcolor: '#e2e8f0', zerolinecolor: '#94a3b8' },
                 yaxis: { title: 'Magnitud', rangemode: 'tozero', gridcolor: '#e2e8f0', zerolinecolor: '#94a3b8' },
                 margin: { t: 34, b: 36, l: 48, r: 16 },
@@ -1339,7 +1388,7 @@
     }
 
     // ==========================================
-    // 5. INICIALIZACIÓN Y EVENTOS
+    // 5. INICIALIZACIÓN, EVENTOS Y CONTROL TÁCTIL
     // ==========================================
     const mainGraph = new LiteGraph.LGraph();
     let currentGraph = mainGraph;
@@ -1358,6 +1407,104 @@
             dirtyPlots = true;
         }
     };
+
+    function applyZoom(factor, centerX, centerY) {
+        const rect = canvasElement.getBoundingClientRect();
+        const cx = centerX !== undefined ? (centerX - rect.left) : (rect.width / 2);
+        const cy = centerY !== undefined ? (centerY - rect.top) : (rect.height / 2);
+
+        const prevScale = canvas.ds.scale;
+        let newScale = prevScale * factor;
+        newScale = Math.max(0.15, Math.min(3.5, newScale));
+
+        canvas.ds.offset[0] = cx - (cx - canvas.ds.offset[0]) * (newScale / prevScale);
+        canvas.ds.offset[1] = cy - (cy - canvas.ds.offset[1]) * (newScale / prevScale);
+        canvas.ds.scale = newScale;
+        canvas.setDirty(true, true);
+    }
+
+    function enableTouchSupport(canvasElem) {
+        let isTwoFingers = false;
+        let lastPinchDist = 0;
+        let lastMidX = 0;
+        let lastMidY = 0;
+
+        function triggerMouseEvent(touch, mouseEventType) {
+            const simulatedEvent = new MouseEvent(mouseEventType, {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                screenX: touch.screenX,
+                screenY: touch.screenY,
+                button: 0,
+                buttons: mouseEventType === "mouseup" ? 0 : 1
+            });
+            canvasElem.dispatchEvent(simulatedEvent);
+        }
+
+        canvasElem.addEventListener("touchstart", function (e) {
+            if (e.touches.length === 1) {
+                isTwoFingers = false;
+                triggerMouseEvent(e.touches[0], "mousedown");
+                e.preventDefault();
+            } else if (e.touches.length === 2) {
+                isTwoFingers = true;
+                triggerMouseEvent(e.touches[0], "mouseup");
+
+                const t0 = e.touches[0];
+                const t1 = e.touches[1];
+                lastPinchDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+                lastMidX = (t0.clientX + t1.clientX) / 2;
+                lastMidY = (t0.clientY + t1.clientY) / 2;
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        canvasElem.addEventListener("touchmove", function (e) {
+            if (!isTwoFingers && e.touches.length === 1) {
+                triggerMouseEvent(e.touches[0], "mousemove");
+                e.preventDefault();
+            } else if (e.touches.length === 2) {
+                const t0 = e.touches[0];
+                const t1 = e.touches[1];
+                const currentDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+                const currentMidX = (t0.clientX + t1.clientX) / 2;
+                const currentMidY = (t0.clientY + t1.clientY) / 2;
+
+                if (lastPinchDist > 0 && currentDist > 0) {
+                    const factor = currentDist / lastPinchDist;
+                    applyZoom(factor, currentMidX, currentMidY);
+                }
+
+                const dx = currentMidX - lastMidX;
+                const dy = currentMidY - lastMidY;
+                canvas.ds.offset[0] += dx;
+                canvas.ds.offset[1] += dy;
+                canvas.setDirty(true, true);
+
+                lastPinchDist = currentDist;
+                lastMidX = currentMidX;
+                lastMidY = currentMidY;
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        canvasElem.addEventListener("touchend", function (e) {
+            if (isTwoFingers) {
+                if (e.touches.length < 2) {
+                    isTwoFingers = false;
+                    lastPinchDist = 0;
+                }
+                e.preventDefault();
+            } else if (e.changedTouches.length > 0) {
+                triggerMouseEvent(e.changedTouches[0], "mouseup");
+                e.preventDefault();
+            }
+        }, { passive: false });
+    }
+    enableTouchSupport(canvasElement);
 
     function resizeCanvas() {
         const container = document.getElementById("canvas-container");
