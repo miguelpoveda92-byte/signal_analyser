@@ -263,7 +263,7 @@
         return { t: timeArray, dt: dt, tMin: tMin, tMax: tMax, T: (tMax - tMin) };
     }
 
-    // Cuadrícula en frecuencia adaptativa: 801 puntos distribuidos en [-fMax, +fMax]
+    // Cuadrícula en frecuencia adaptativa: 801 puntos distribuidos uniformemente en [-fMax, +fMax]
     function getActiveFrequencyAxis(fMax) {
         const NUM_FREQ_POINTS = 801;
         const df = (2 * fMax) / (NUM_FREQ_POINTS - 1);
@@ -278,7 +278,7 @@
         if (!signalObj) return new Array(active_f_axis.length).fill(0);
         if (signalObj.isAnalyticDelta) return active_f_axis.map(() => signalObj.deltaWeight);
 
-        // Muestreo ideal: replicas de Nyquist calculadas sobre el eje adaptado
+        // Muestreo ideal: replicas de Fourier evaluadas directamente sobre el eje adaptado
         if (signalObj.isSampledSignal && signalObj.sampleInstants) {
             const Ts = signalObj.sampledTs || (1 / (signalObj.fs_sample || 20));
             const samples = signalObj.sampleInstants;
@@ -297,6 +297,7 @@
         const isDisc = signalObj.discrete;
 
         if (isDisc && signalObj.stemX && signalObj.stemY) {
+            // DTFT con alta resolución espectral: X(f) = sum x[n] * exp(-j 2pi f n)
             const n_vals = signalObj.stemX;
             const x_vals = signalObj.stemY;
             return active_f_axis.map(f => {
@@ -312,8 +313,10 @@
                 return Math.sqrt(re * re + im * im);
             });
         } else {
+            // Transformada de Fourier continua: X(f) = int x(t) exp(-j 2pi f t) dt
+            // Para señales periódicas (seno/coseno), la amplitud de cada delta bilateral es A / 2
             const T_win = getCurrentTimeVector().T;
-            const normFactor = signalObj.isPeriodic ? (2.0 / T_win) : 1.0;
+            const normFactor = signalObj.isPeriodic ? (1.0 / T_win) : 1.0;
             let currentT = getCurrentTimeVector().t;
 
             return active_f_axis.map(f => {
@@ -493,7 +496,7 @@
         const a_val = Math.max(0.01, Number(this.properties.a || 1));
         const sign = this.properties.inv ? -1.0 : 1.0;
         
-        // Expresión: tau = s * a * (time + t0)
+        // Expresión rigurosa: tau = s * a * (time + t0)
         let tau = sign * a_val * (time + t0);
 
         if (in1.sourceNode && typeof in1.sourceNode.evalAt === "function") {
@@ -522,7 +525,8 @@
         const { t, dt, tMin } = getCurrentTimeVector();
 
         if (isDisc && in1.stemX && in1.stemY) {
-            // Relación discreta: y[n] = x[ s * a * (n + n0) ]
+            // Relación rigurosa en discreto: y[n] = x[ s * a * (n + n0) ]
+            // k = s * a * (n + n0) => n = (s * k / a) - n0
             const n0 = Math.round(Number(this.properties.t0 || 0));
             const a_int = Math.max(1, Math.round(Number(this.properties.a || 1)));
 
@@ -566,6 +570,7 @@
                 dt: dt
             });
         } else {
+            // Continuo: y(t) = x( s * a * (t + t0) )
             const a_val = Math.max(0.01, Number(this.properties.a || 1));
             let outValues = t.map(time => this.evalAt(time, dt));
 
@@ -795,7 +800,7 @@
     LiteGraph.registerNodeType("Telecom/Multiplicador", NodoMultiplicador);
 
 
-    // --- CONVOLUCIÓN EXACTA (Sin Efecto de Borde en Límites) ---
+    // --- CONVOLUCIÓN EXACTA ---
     function NodoConvolucion() {
         this.addInput("x", "signal");
         this.addInput("h", "signal");
@@ -898,7 +903,7 @@
     LiteGraph.registerNodeType("Telecom/Convolucion", NodoConvolucion);
 
 
-    // --- FILTRO LTI (Independiente del grid de visualización) ---
+    // --- FILTRO LTI ---
     function NodoFiltro() {
         this.addInput("x(t)", "signal");
         this.addOutput("y(t)", "signal");
@@ -1683,3 +1688,4 @@
 
 </body>
 </html>
+
