@@ -794,6 +794,7 @@
             sourceNode: this,
             values,
             discrete: in1.discrete,
+            isPeriodic: (in1 && in1.isPeriodic) || (in2 && in2.isPeriodic),
             dt: dt
         });
     };
@@ -1063,7 +1064,7 @@
         const { t, dt } = getCurrentTimeVector();
         
         let values = t.map((time, idx) => Ac * (1 + mu * in1.values[idx]) * Math.cos(2 * Math.PI * fc * time));
-        this.setOutputData(0, { name: nombre || "s_AM(t)", values, discrete: false, dt: dt });
+        this.setOutputData(0, { name: nombre || "s_AM(t)", values, discrete: false, isPeriodic: true, dt: dt });
     };
     LiteGraph.registerNodeType("Telecom/ModuladorAM", NodoModuladorAM);
 
@@ -1076,8 +1077,9 @@
         const that = this;
         this.addWidget("text", "Etiqueta", "s_FM(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 1, max: 100, step: 1 });
-        this.addWidget("number", "Índice β", 2, v => { that.properties.beta = Number(v); dirtyPlots = true; }, { min: 0.1, max: 10, step: 0.5 });
-        this.size = [210, 115];
+        this.addWidget("number", "Índice β", 2, v => { that.properties.beta = Number(v); dirtyPlots = true; }, { min: 0.1, max: 10, step: 0.1 });
+        this.addWidget("number", "Amplitud Ac", 1, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { min: 0.5, max: 5, step: 0.5 });
+        this.size = [210, 135];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorFM.title = "Modulador FM";
@@ -1087,12 +1089,33 @@
         const { fc, beta, Ac, nombre } = this.properties;
         const { t, dt } = getCurrentTimeVector();
         
-        let integral = 0;
+        const m = in1.values;
+        let integral = new Array(N);
+        let acc = 0;
+        for (let i = 0; i < N; i++) {
+            acc += m[i] * dt;
+            integral[i] = acc;
+        }
+
+        // Eliminar componente continua acumulada por la integral numérica
+        let meanInt = 0;
+        for (let i = 0; i < N; i++) meanInt += integral[i];
+        meanInt /= N;
+
+        let maxDev = 0;
+        for (let i = 0; i < N; i++) {
+            integral[i] -= meanInt;
+            let absVal = Math.abs(integral[i]);
+            if (absVal > maxDev) maxDev = absVal;
+        }
+
+        // Para moduladora m(t) = Am*cos(2*pi*fm*t), la excursión máxima de fase pico es estrictamente beta radianes
+        const normFactor = maxDev > 1e-6 ? (beta / maxDev) : 0;
         let values = t.map((time, idx) => {
-            integral += in1.values[idx] * dt;
-            return Ac * Math.cos(2 * Math.PI * fc * time + 2 * Math.PI * beta * 5 * integral);
+            return Ac * Math.cos(2 * Math.PI * fc * time + integral[idx] * normFactor);
         });
-        this.setOutputData(0, { name: nombre || "s_FM(t)", values, discrete: false, dt: dt });
+
+        this.setOutputData(0, { name: nombre || "s_FM(t)", values, discrete: false, isPeriodic: true, dt: dt });
     };
     LiteGraph.registerNodeType("Telecom/ModuladorFM", NodoModuladorFM);
 
