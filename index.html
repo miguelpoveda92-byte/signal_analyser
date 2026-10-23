@@ -263,9 +263,9 @@
         return { t: timeArray, dt: dt, tMin: tMin, tMax: tMax, T: (tMax - tMin) };
     }
 
-    // Cuadrícula en frecuencia adaptativa: 601 puntos siempre dentro de [-fMax, +fMax]
+    // Cuadrícula en frecuencia adaptativa: 801 puntos distribuidos en [-fMax, +fMax]
     function getActiveFrequencyAxis(fMax) {
-        const NUM_FREQ_POINTS = 601;
+        const NUM_FREQ_POINTS = 801;
         const df = (2 * fMax) / (NUM_FREQ_POINTS - 1);
         const axis = new Array(NUM_FREQ_POINTS);
         for (let i = 0; i < NUM_FREQ_POINTS; i++) {
@@ -278,9 +278,19 @@
         if (!signalObj) return new Array(active_f_axis.length).fill(0);
         if (signalObj.isAnalyticDelta) return active_f_axis.map(() => signalObj.deltaWeight);
 
-        // Muestreo ideal: replicas de Nyquist adaptativas
-        if (signalObj.isSampledSignal && signalObj.inputSignal) {
-            return computeSampledSpectrum(signalObj.inputSignal, currentDt, active_f_axis, signalObj.fs_sample);
+        // Muestreo ideal: replicas de Nyquist calculadas sobre el eje adaptado
+        if (signalObj.isSampledSignal && signalObj.sampleInstants) {
+            const Ts = signalObj.sampledTs || (1 / (signalObj.fs_sample || 20));
+            const samples = signalObj.sampleInstants;
+            return active_f_axis.map(f => {
+                let re = 0, im = 0;
+                for (let i = 0; i < samples.length; i++) {
+                    let angle = -2 * Math.PI * f * samples[i].t;
+                    re += samples[i].v * Math.cos(angle);
+                    im += samples[i].v * Math.sin(angle);
+                }
+                return Math.sqrt(re * re + im * im) * Ts;
+            });
         }
 
         const x = signalObj.values;
@@ -317,36 +327,6 @@
                 return Math.sqrt(re * re + im * im) * currentDt * normFactor;
             });
         }
-    }
-
-    // Espectro de señal muestreada replicado con interpolación suave
-    function computeSampledSpectrum(inputSignal, dt, f_axis_active, fs_sample) {
-        const fMaxActive = Math.abs(f_axis_active[f_axis_active.length - 1]);
-        const K = Math.min(10, Math.ceil(fMaxActive / fs_sample) + 2);
-        const fExtMax = fMaxActive + (K + 1) * fs_sample;
-        const NUM_EXT = 1201;
-        const dfExt = (2 * fExtMax) / (NUM_EXT - 1);
-
-        const ext_axis = new Array(NUM_EXT);
-        for (let i = 0; i < NUM_EXT; i++) ext_axis[i] = -fExtMax + i * dfExt;
-
-        const baseSpecExt = computeSpectrum(inputSignal, dt, ext_axis);
-
-        function interpExt(fVal) {
-            let idx = (fVal + fExtMax) / dfExt;
-            if (idx < 0 || idx >= NUM_EXT - 1) return 0;
-            let i0 = Math.floor(idx);
-            let frac = idx - i0;
-            return baseSpecExt[i0] * (1 - frac) + baseSpecExt[i0 + 1] * frac;
-        }
-
-        return f_axis_active.map(f => {
-            let sum = 0;
-            for (let k = -K; k <= K; k++) {
-                sum += interpExt(f - k * fs_sample);
-            }
-            return sum;
-        });
     }
 
     function evaluateFilterH(f, tipo, aprox, fc, bw, orden, gain) {
@@ -455,22 +435,56 @@
     LiteGraph.registerNodeType("Telecom/GeneradorContinuo", NodoGeneradorContinuo);
 
 
-    // --- TRANSFORMACIÓN DE VARIABLE ---
+    // --- TRANSFORMACIÓN DE VARIABLE (Continuo y Discreto) ---
     function NodoTransformacion() {
         this.addInput("x(t)", "signal");
         this.addOutput("y(t)", "signal");
         this.properties = { nombre: "y(t)", t0: 0.0, a: 1.0, inv: false };
 
         const that = this;
-        this.addWidget("text", "Etiqueta", "y(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "Desplaz. t_0", 0.0, v => { that.properties.t0 = Number(v); dirtyPlots = true; }, { min: -10, max: 10, step: 0.2 });
-        this.addWidget("number", "Escalado a", 1.0, v => { that.properties.a = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.1, max: 5, step: 0.1 });
-        this.addWidget("toggle", "Inversión (-t)", false, v => { that.properties.inv = Boolean(v); dirtyPlots = true; });
+        this.wName = this.addWidget("text", "Etiqueta", "y(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
+        this.wShift = this.addWidget("number", "Desplaz. t_0", 0.0, v => { that.properties.t0 = Number(v); dirtyPlots = true; }, { min: -20, max: 20, step: 0.5 });
+        this.wScale = this.addWidget("number", "Escalado a", 1.0, v => { that.properties.a = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.1, max: 10, step: 0.1 });
+        this.wInv = this.addWidget("toggle", "Inversión (-t)", false, v => { that.properties.inv = Boolean(v); dirtyPlots = true; });
 
         this.size = [215, 140];
         applyLightStyle(this, "#c7d2fe", "#ffffff");
     }
     NodoTransformacion.title = "Transf. Variable";
+
+    NodoTransformacion.prototype.adaptToInputDomain = function(isDisc) {
+        if (this._lastIsDisc === isDisc) return;
+        this._lastIsDisc = isDisc;
+
+        if (isDisc) {
+            this.inputs[0].name = "x[n]";
+            this.outputs[0].name = "y[n]";
+            this.wShift.name = "Desplaz. n_0";
+            this.wShift.options.step = 1;
+            this.wScale.name = "Diezmado a";
+            this.wScale.options.step = 1;
+            this.wScale.options.min = 1;
+            this.wInv.name = "Inversión (-n)";
+            if (this.properties.nombre === "y(t)") {
+                this.properties.nombre = "y[n]";
+                this.wName.value = "y[n]";
+            }
+        } else {
+            this.inputs[0].name = "x(t)";
+            this.outputs[0].name = "y(t)";
+            this.wShift.name = "Desplaz. t_0";
+            this.wShift.options.step = 0.5;
+            this.wScale.name = "Escalado a";
+            this.wScale.options.step = 0.1;
+            this.wScale.options.min = 0.1;
+            this.wInv.name = "Inversión (-t)";
+            if (this.properties.nombre === "y[n]") {
+                this.properties.nombre = "y(t)";
+                this.wName.value = "y(t)";
+            }
+        }
+        this.setDirtyCanvas(true, true);
+    };
 
     NodoTransformacion.prototype.evalAt = function(time, dt) {
         let in1 = this.getInputData(0);
@@ -478,7 +492,9 @@
         const t0 = Number(this.properties.t0 || 0);
         const a_val = Math.max(0.01, Number(this.properties.a || 1));
         const sign = this.properties.inv ? -1.0 : 1.0;
-        let tau = sign * a_val * time + t0;
+        
+        // Expresión: tau = s * a * (time + t0)
+        let tau = sign * a_val * (time + t0);
 
         if (in1.sourceNode && typeof in1.sourceNode.evalAt === "function") {
             return in1.sourceNode.evalAt(tau, dt);
@@ -497,22 +513,73 @@
         let in1 = this.getInputData(0);
         if (!in1) return;
 
-        const nombre = this.properties.nombre || "y(t)";
-        const a_val = Math.max(0.01, Number(this.properties.a || 1));
-        const { t, dt } = getCurrentTimeVector();
+        const isDisc = Boolean(in1.discrete);
+        this.adaptToInputDomain(isDisc);
 
-        let outValues = t.map(time => this.evalAt(time, dt));
+        const nombre = this.properties.nombre || (isDisc ? "y[n]" : "y(t)");
+        const inv = Boolean(this.properties.inv);
+        const sign = inv ? -1.0 : 1.0;
+        const { t, dt, tMin } = getCurrentTimeVector();
 
-        this.setOutputData(0, {
-            name: nombre,
-            sourceNode: this,
-            values: outValues,
-            discrete: in1.discrete,
-            isPeriodic: in1.isPeriodic,
-            isAnalyticDelta: in1.isAnalyticDelta,
-            deltaWeight: in1.deltaWeight ? in1.deltaWeight / a_val : 0,
-            dt: dt
-        });
+        if (isDisc && in1.stemX && in1.stemY) {
+            // Relación discreta: y[n] = x[ s * a * (n + n0) ]
+            const n0 = Math.round(Number(this.properties.t0 || 0));
+            const a_int = Math.max(1, Math.round(Number(this.properties.a || 1)));
+
+            let outX = [];
+            let outY = [];
+
+            for (let i = 0; i < in1.stemX.length; i++) {
+                let k = in1.stemX[i];
+                let num = sign * k;
+                if (num % a_int === 0) {
+                    let n = Math.floor(num / a_int) - n0;
+                    outX.push(n);
+                    outY.push(in1.stemY[i]);
+                }
+            }
+
+            let combined = outX.map((xVal, idx) => ({ x: xVal, y: outY[idx] }));
+            combined.sort((a, b) => a.x - b.x);
+
+            let resStemX = combined.map(p => p.x);
+            let resStemY = combined.map(p => p.y);
+            if (resStemX.length === 0) {
+                resStemX = [0];
+                resStemY = [0.0];
+            }
+
+            let fullValues = new Array(N).fill(0);
+            for (let i = 0; i < resStemX.length; i++) {
+                let mappedIdx = Math.round((resStemX[i] - tMin) / dt);
+                if (mappedIdx >= 0 && mappedIdx < N) {
+                    fullValues[mappedIdx] = resStemY[i];
+                }
+            }
+
+            this.setOutputData(0, {
+                name: nombre,
+                values: fullValues,
+                discrete: true,
+                stemX: resStemX,
+                stemY: resStemY,
+                dt: dt
+            });
+        } else {
+            const a_val = Math.max(0.01, Number(this.properties.a || 1));
+            let outValues = t.map(time => this.evalAt(time, dt));
+
+            this.setOutputData(0, {
+                name: nombre,
+                sourceNode: this,
+                values: outValues,
+                discrete: false,
+                isPeriodic: in1.isPeriodic,
+                isAnalyticDelta: in1.isAnalyticDelta,
+                deltaWeight: in1.deltaWeight ? in1.deltaWeight / a_val : 0,
+                dt: dt
+            });
+        }
     };
     LiteGraph.registerNodeType("Telecom/Transformacion", NodoTransformacion);
 
@@ -728,7 +795,7 @@
     LiteGraph.registerNodeType("Telecom/Multiplicador", NodoMultiplicador);
 
 
-    // --- CONVOLUCIÓN EXACTA (Sin Efecto de Borde) ---
+    // --- CONVOLUCIÓN EXACTA (Sin Efecto de Borde en Límites) ---
     function NodoConvolucion() {
         this.addInput("x", "signal");
         this.addInput("h", "signal");
@@ -831,7 +898,7 @@
     LiteGraph.registerNodeType("Telecom/Convolucion", NodoConvolucion);
 
 
-    // --- FILTRO LTI (Independiente de la rejilla visual) ---
+    // --- FILTRO LTI (Independiente del grid de visualización) ---
     function NodoFiltro() {
         this.addInput("x(t)", "signal");
         this.addOutput("y(t)", "signal");
@@ -873,7 +940,6 @@
                 return acc * gain;
             });
         } else {
-            // Rejilla interna precisa para síntesis de h(t)
             const N_FILT = 801;
             const F_FILT_MAX = 150;
             const df_filt = F_FILT_MAX / (N_FILT - 1);
@@ -962,7 +1028,6 @@
             stemY: customY,
             sampleInstants: sampleInstants,
             isSampledSignal: true,
-            inputSignal: in1,
             fs_sample: fs_s,
             discrete: true, 
             sampledTs: Ts,
@@ -1287,7 +1352,7 @@
         const { t, tMin, tMax, dt } = getCurrentTimeVector();
         const fMax = Math.abs(parseFloat(document.getElementById("fMax").value)) || 5.0;
 
-        // Generar eje de frecuencia adaptado al fMax actual
+        // Generar dinámicamente 801 puntos adaptados al fMax actual
         const { axis: active_f_axis } = getActiveFrequencyAxis(fMax);
 
         const oscName = oscNode ? oscNode.properties.nombre : "Sin Osciloscopio activo";
