@@ -144,7 +144,7 @@
             <span>Generador Discreto</span><span class="dot" style="background:#0284c7"></span>
         </button>
         <button class="module-btn" onclick="addModule('Telecom/Digital')">
-            <span>Secuencia Digital (0/1)</span><span class="dot" style="background:#3b82f6"></span>
+            <span>Secuencia Digital (bps)</span><span class="dot" style="background:#3b82f6"></span>
         </button>
 
         <div class="category-title">2. Transformación y Sistemas</div>
@@ -205,7 +205,6 @@
             <button onclick="exitSubgraph()">⬅ Volver al sistema principal</button>
         </div>
         <button id="toggle-panel-btn" onclick="togglePlotPanel()">👁️ Ocultar Gráficas</button>
-        <!-- Controles flotantes de Zoom en pantalla (móvil) -->
         <div id="mobile-zoom-controls">
             <button class="zoom-btn" onclick="applyZoom(1.2)" title="Acercar (Zoom In)">➕</button>
             <button class="zoom-btn" onclick="applyZoom(0.8)" title="Alejar (Zoom Out)">➖</button>
@@ -278,7 +277,6 @@
         if (!signalObj) return new Array(active_f_axis.length).fill(0);
         if (signalObj.isAnalyticDelta) return active_f_axis.map(() => signalObj.deltaWeight);
 
-        // Muestreo ideal: replicas de Fourier evaluadas directamente sobre el eje adaptado
         if (signalObj.isSampledSignal && signalObj.sampleInstants) {
             const Ts = signalObj.sampledTs || (1 / (signalObj.fs_sample || 20));
             const samples = signalObj.sampleInstants;
@@ -297,7 +295,6 @@
         const isDisc = signalObj.discrete;
 
         if (isDisc && signalObj.stemX && signalObj.stemY) {
-            // DTFT con alta resolución espectral: X(f) = sum x[n] * exp(-j 2pi f n)
             const n_vals = signalObj.stemX;
             const x_vals = signalObj.stemY;
             return active_f_axis.map(f => {
@@ -313,8 +310,6 @@
                 return Math.sqrt(re * re + im * im);
             });
         } else {
-            // Transformada de Fourier continua: X(f) = int x(t) exp(-j 2pi f t) dt
-            // Para señales periódicas (seno/coseno), la amplitud de cada delta bilateral es A / 2
             const T_win = getCurrentTimeVector().T;
             const normFactor = signalObj.isPeriodic ? (1.0 / T_win) : 1.0;
             let currentT = getCurrentTimeVector().t;
@@ -418,8 +413,7 @@
 
     NodoGeneradorContinuo.prototype.onExecute = function() {
         const { tipo, amp, nombre } = this.properties;
-        const { t, dt, tMin } = getCurrentTimeVector();
-        let deltaIdx = Math.round((0 - tMin) / dt);
+        const { t, dt } = getCurrentTimeVector();
         const isPeriodic = (tipo === "Coseno" || tipo === "Seno");
 
         let values = t.map(time => this.evalAt(time, dt));
@@ -438,7 +432,7 @@
     LiteGraph.registerNodeType("Telecom/GeneradorContinuo", NodoGeneradorContinuo);
 
 
-    // --- TRANSFORMACIÓN DE VARIABLE (Continuo y Discreto) ---
+    // --- TRANSFORMACIÓN DE VARIABLE ---
     function NodoTransformacion() {
         this.addInput("x(t)", "signal");
         this.addOutput("y(t)", "signal");
@@ -496,7 +490,6 @@
         const a_val = Math.max(0.01, Number(this.properties.a || 1));
         const sign = this.properties.inv ? -1.0 : 1.0;
         
-        // Expresión rigurosa: tau = s * a * (time + t0)
         let tau = sign * a_val * (time + t0);
 
         if (in1.sourceNode && typeof in1.sourceNode.evalAt === "function") {
@@ -525,8 +518,6 @@
         const { t, dt, tMin } = getCurrentTimeVector();
 
         if (isDisc && in1.stemX && in1.stemY) {
-            // Relación rigurosa en discreto: y[n] = x[ s * a * (n + n0) ]
-            // k = s * a * (n + n0) => n = (s * k / a) - n0
             const n0 = Math.round(Number(this.properties.t0 || 0));
             const a_int = Math.max(1, Math.round(Number(this.properties.a || 1)));
 
@@ -570,7 +561,6 @@
                 dt: dt
             });
         } else {
-            // Continuo: y(t) = x( s * a * (t + t0) )
             const a_val = Math.max(0.01, Number(this.properties.a || 1));
             let outValues = t.map(time => this.evalAt(time, dt));
 
@@ -633,18 +623,35 @@
     LiteGraph.registerNodeType("Telecom/GeneradorDiscreto", NodoGeneradorDiscreto);
 
 
-    // --- SECUENCIA DIGITAL ---
+    // --- SECUENCIA DIGITAL (ACTUALIZADO: Tasa de Bits Rb y desfase t0) ---
     function NodoDigital() {
         this.addOutput("d(t)", "signal");
-        this.properties = { nombre: "d(t)", bits: "10110010", codigo: "NRZ Unipolar (0/1)", amp: 1 };
+        this.properties = { 
+            nombre: "d(t)", 
+            bits: "10110010", 
+            codigo: "NRZ Unipolar (0/1)", 
+            rb: 2.0,         // Tasa en bps (bits por segundo)
+            t_start: 0.0,    // Inicio temporal en segundos
+            amp: 1.0 
+        };
         
         const that = this;
         this.addWidget("text", "Etiqueta", "d(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.addWidget("text", "Bits", "10110010", v => { that.properties.bits = v; dirtyPlots = true; });
-        this.addWidget("combo", "Código", "NRZ Unipolar (0/1)", v => { that.properties.codigo = v; dirtyPlots = true; }, { values: ["NRZ Unipolar (0/1)", "NRZ Polar (-1/+1)", "Manchester"] });
-        this.addWidget("number", "Amplitud", 1, v => { that.properties.amp = Number(v); dirtyPlots = true; }, { min: 0.5, max: 5, step: 0.5 });
+        this.addWidget("combo", "Código", "NRZ Unipolar (0/1)", v => { that.properties.codigo = v; dirtyPlots = true; }, { 
+            values: ["NRZ Unipolar (0/1)", "NRZ Polar (-1/+1)", "Manchester"] 
+        });
+        this.addWidget("number", "Tasa Rb (bps)", 2.0, v => { that.properties.rb = Math.max(0.1, Number(v)); dirtyPlots = true; }, { 
+            min: 0.1, max: 100, step: 0.5 
+        });
+        this.addWidget("number", "Inicio t0 (s)", 0.0, v => { that.properties.t_start = Number(v); dirtyPlots = true; }, { 
+            min: -20, max: 20, step: 0.2 
+        });
+        this.addWidget("number", "Amplitud", 1.0, v => { that.properties.amp = Number(v); dirtyPlots = true; }, { 
+            min: 0.2, max: 10, step: 0.1 
+        });
         
-        this.size = [220, 135];
+        this.size = [230, 180];
         applyLightStyle(this, "#bfdbfe", "#ffffff");
     }
     NodoDigital.title = "Secuencia Digital";
@@ -653,24 +660,44 @@
         if (cleanBits.length === 0) cleanBits = "0";
         
         const numBits = cleanBits.length;
-        const samplesPerBit = Math.floor(N / numBits);
+        const rb = Math.max(0.1, Number(this.properties.rb || 1));
+        const Tb = 1.0 / rb;
+        const tStart = Number(this.properties.t_start !== undefined ? this.properties.t_start : 0);
+        const tEnd = tStart + numBits * Tb;
         const { codigo, amp, nombre } = this.properties;
-        const { dt } = getCurrentTimeVector();
+        const { t, dt } = getCurrentTimeVector();
 
-        let values = new Array(N).fill(0);
-        for (let idx = 0; idx < N; idx++) {
-            let bitIndex = Math.min(Math.floor(idx / samplesPerBit), numBits - 1);
-            let bit = cleanBits[bitIndex] === "1" ? 1 : 0;
-            let posInBit = (idx % samplesPerBit) / samplesPerBit;
-
-            if (codigo === "NRZ Unipolar (0/1)") values[idx] = bit ? amp : 0;
-            else if (codigo === "NRZ Polar (-1/+1)") values[idx] = bit ? amp : -amp;
-            else if (codigo === "Manchester") {
-                values[idx] = (bit === 1) ? (posInBit < 0.5 ? amp : -amp) : (posInBit < 0.5 ? -amp : amp);
+        let values = t.map(time => {
+            if (time < tStart || time >= tEnd) {
+                return 0;
             }
-        }
 
-        this.setOutputData(0, { name: nombre || "d(t)", values, discrete: false, dt: dt });
+            let bitIndex = Math.floor((time - tStart) / Tb);
+            if (bitIndex >= numBits) bitIndex = numBits - 1;
+            let bit = cleanBits[bitIndex] === "1" ? 1 : 0;
+            let posInBit = ((time - tStart) % Tb) / Tb;
+
+            if (codigo === "NRZ Unipolar (0/1)") {
+                return bit ? amp : 0;
+            }
+            if (codigo === "NRZ Polar (-1/+1)") {
+                return bit ? amp : -amp;
+            }
+            if (codigo === "Manchester") {
+                return (bit === 1) ? (posInBit < 0.5 ? amp : -amp) : (posInBit < 0.5 ? -amp : amp);
+            }
+            return 0;
+        });
+
+        this.setOutputData(0, { 
+            name: nombre || "d(t)", 
+            values: values, 
+            discrete: false, 
+            isPeriodic: false,
+            Rb: rb,
+            Tb: Tb,
+            dt: dt 
+        });
     };
     LiteGraph.registerNodeType("Telecom/Digital", NodoDigital);
 
@@ -929,7 +956,7 @@
         let in1 = this.getInputData(0);
         if (!in1) return;
 
-        const { tipo, aprox, fc, bw, orden, gain, showH, nombre } = this.properties;
+        const { tipo, aprox, fc, bw, orden, gain, nombre } = this.properties;
         const { t, dt } = getCurrentTimeVector();
 
         let y = new Array(N).fill(0);
@@ -979,7 +1006,7 @@
             values: y,
             discrete: false,
             isPeriodic: in1.isPeriodic,
-            filterParams: { tipo, aprox, fc, bw, orden, gain, showH },
+            filterParams: { tipo, aprox, fc, bw, orden, gain, showH: this.properties.showH },
             dt: dt
         });
     };
@@ -1097,7 +1124,6 @@
             integral[i] = acc;
         }
 
-        // Eliminar componente continua acumulada por la integral numérica
         let meanInt = 0;
         for (let i = 0; i < N; i++) meanInt += integral[i];
         meanInt /= N;
@@ -1109,7 +1135,6 @@
             if (absVal > maxDev) maxDev = absVal;
         }
 
-        // Para moduladora m(t) = Am*cos(2*pi*fm*t), la excursión máxima de fase pico es estrictamente beta radianes
         const normFactor = maxDev > 1e-6 ? (beta / maxDev) : 0;
         let values = t.map((time, idx) => {
             return Ac * Math.cos(2 * Math.PI * fc * time + integral[idx] * normFactor);
@@ -1380,7 +1405,6 @@
         const { t, tMin, tMax, dt } = getCurrentTimeVector();
         const fMax = Math.abs(parseFloat(document.getElementById("fMax").value)) || 5.0;
 
-        // Generar dinámicamente 801 puntos adaptados al fMax actual
         const { axis: active_f_axis } = getActiveFrequencyAxis(fMax);
 
         const oscName = oscNode ? oscNode.properties.nombre : "Sin Osciloscopio activo";
@@ -1711,4 +1735,5 @@
 
 </body>
 </html>
+
 
