@@ -172,7 +172,13 @@
             <span>Modulador AM</span><span class="dot" style="background:#f59e0b"></span>
         </button>
         <button class="module-btn" onclick="addModule('Telecom/ModuladorFM')">
-            <span>Modulador FM</span><span class="dot" style="background:#f59e0b"></span>
+            <span>Modulador FM (Índice β)</span><span class="dot" style="background:#f59e0b"></span>
+        </button>
+        <button class="module-btn" onclick="addModule('Telecom/ModuladorPM')">
+            <span>Modulador PM</span><span class="dot" style="background:#f59e0b"></span>
+        </button>
+        <button class="module-btn" onclick="addModule('Telecom/ModuladorQAM')">
+            <span>Modulador QAM (4/16)</span><span class="dot" style="background:#f59e0b"></span>
         </button>
         <button class="module-btn" onclick="addModule('Telecom/DetectorEnvolvente')">
             <span>Detector de Envolvente</span><span class="dot" style="background:#ea580c"></span>
@@ -194,6 +200,14 @@
             <span>Añadir Osciloscopio</span><span class="dot" style="background:#8b5cf6"></span>
         </button>
 
+        <div class="category-title">6. Gestión de Esquemas</div>
+        <button class="action-btn" onclick="saveGraphToFile()">💾 Guardar JSON</button>
+        <button class="action-btn" onclick="document.getElementById('fileInput').click()">📂 Cargar JSON</button>
+        <input type="file" id="fileInput" accept=".json" style="display:none;" onchange="loadGraphFromFile(event)">
+        <button class="action-btn" onclick="saveToLocalStorage()">📌 Guardar en Navegador</button>
+        <button class="action-btn" onclick="loadFromLocalStorage()">🔄 Cargar de Navegador</button>
+
+        <div class="category-title">Acciones de Lienzo</div>
         <button class="action-btn" onclick="resetView()">🔍 Centrar Lienzo</button>
         <button class="action-btn" style="color:#dc2626;" onclick="clearCanvas()">🗑️ Vaciar Todo</button>
     </div>
@@ -231,7 +245,7 @@
             </div>
             <div class="ctrl-item">
                 <label>Frec ±(Hz):</label>
-                <input type="number" id="fMax" value="5" step="0.5" min="0.1" max="500" oninput="forcePlotUpdate()" onchange="forcePlotUpdate()">
+                <input type="number" id="fMax" value="50" step="5" min="0.1" max="500" oninput="forcePlotUpdate()" onchange="forcePlotUpdate()">
             </div>
             <div class="ctrl-item">
                 <button class="action-btn" id="btnToggleFreq" style="padding: 2px 7px; margin:0;" onclick="toggleFreqPlot()">Ocultar |X(f)|</button>
@@ -262,7 +276,6 @@
         return { t: timeArray, dt: dt, tMin: tMin, tMax: tMax, T: (tMax - tMin) };
     }
 
-    // Cuadrícula en frecuencia adaptativa: 801 puntos distribuidos uniformemente en [-fMax, +fMax]
     function getActiveFrequencyAxis(fMax) {
         const NUM_FREQ_POINTS = 801;
         const df = (2 * fMax) / (NUM_FREQ_POINTS - 1);
@@ -369,12 +382,12 @@
             that.properties.tipo = v;
             that.updateWidgetVisibility();
             dirtyPlots = true;
-        }, { values: ["Coseno", "Seno", "Pulso Rectangular", "Escalón Unidad", "Delta", "Exponencial Decreciente"] });
+        }, { values: ["Coseno", "Seno", "Pulso Rectangular", "Pulso Triangular", "Función Rampa", "Sinc (Sen Cardinal)", "Escalón Unidad", "Delta", "Exponencial Decreciente"] });
         
-        this.wAmp = this.addWidget("number", "Amplitud", 1, v => { that.properties.amp = Number(v); dirtyPlots = true; }, { min: 0.1, max: 10, step: 0.1 });
-        this.wFreq = this.addWidget("number", "Frec (Hz)", 5, v => { that.properties.freq = Number(v); dirtyPlots = true; }, { min: 0.2, max: 50, step: 0.5 });
-        this.wAncho = this.addWidget("number", "Ancho Pulso", 4.0, v => { that.properties.ancho = Number(v); dirtyPlots = true; }, { min: 0.1, max: 20.0, step: 0.2 });
-        this.wTau = this.addWidget("number", "Tau τ (s)", 0.5, v => { that.properties.tau = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.05, max: 5.0, step: 0.05 });
+        this.wAmp = this.addWidget("number", "Amplitud", 1, v => { that.properties.amp = Number(v); dirtyPlots = true; }, { step: 0.1 });
+        this.wFreq = this.addWidget("number", "Frec (Hz)", 5, v => { that.properties.freq = Number(v); dirtyPlots = true; }, { step: 0.5 });
+        this.wAncho = this.addWidget("number", "Duración (s)", 4.0, v => { that.properties.ancho = Number(v); dirtyPlots = true; }, { min: 0.05, step: 0.2 });
+        this.wTau = this.addWidget("number", "Tau τ (s)", 0.5, v => { that.properties.tau = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.01, step: 0.05 });
         
         this.updateWidgetVisibility();
         applyLightStyle(this, "#bfdbfe", "#ffffff");
@@ -385,10 +398,11 @@
         const tipo = this.properties.tipo;
         this.widgets = [this.wName, this.wType, this.wAmp];
         
-        if (tipo === "Coseno" || tipo === "Seno") {
+        if (tipo === "Coseno" || tipo === "Seno" || tipo === "Sinc (Sen Cardinal)") {
             this.widgets.push(this.wFreq);
             this.size = [210, 140];
-        } else if (tipo === "Pulso Rectangular") {
+        } else if (tipo === "Pulso Rectangular" || tipo === "Pulso Triangular" || tipo === "Función Rampa") {
+            this.wAncho.name = (tipo === "Pulso Rectangular") ? "Ancho Pulso" : "Duración (s)";
             this.widgets.push(this.wAncho);
             this.size = [210, 140];
         } else if (tipo === "Exponencial Decreciente") {
@@ -402,9 +416,32 @@
 
     NodoGeneradorContinuo.prototype.evalAt = function(time, dt) {
         const { tipo, amp, freq, ancho, tau } = this.properties;
+        const dur = Math.max(0.001, ancho || 1.0);
+
         if (tipo === "Coseno") return amp * Math.cos(2 * Math.PI * freq * time);
         if (tipo === "Seno") return amp * Math.sin(2 * Math.PI * freq * time);
-        if (tipo === "Pulso Rectangular") return Math.abs(time) <= (ancho / 2) ? amp : 0;
+        if (tipo === "Pulso Rectangular") return Math.abs(time) <= (dur / 2) ? amp : 0;
+        
+        if (tipo === "Pulso Triangular") {
+            let half = dur / 2;
+            if (Math.abs(time) <= half) {
+                return amp * (1.0 - Math.abs(time) / half);
+            }
+            return 0;
+        }
+
+        if (tipo === "Función Rampa") {
+            if (time >= 0 && time <= dur) {
+                return amp * (time / dur);
+            }
+            return 0;
+        }
+
+        if (tipo === "Sinc (Sen Cardinal)") {
+            let arg = Math.PI * freq * time;
+            return Math.abs(arg) < 1e-6 ? amp : amp * (Math.sin(arg) / arg);
+        }
+
         if (tipo === "Escalón Unidad") return time >= 0 ? amp : 0;
         if (tipo === "Delta") return Math.abs(time) < (dt * 0.75) ? (amp / dt) : 0;
         if (tipo === "Exponencial Decreciente") return time >= 0 ? amp * Math.exp(-time / Math.max(0.001, tau)) : 0;
@@ -440,8 +477,8 @@
 
         const that = this;
         this.wName = this.addWidget("text", "Etiqueta", "y(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.wShift = this.addWidget("number", "Desplaz. t_0", 0.0, v => { that.properties.t0 = Number(v); dirtyPlots = true; }, { min: -20, max: 20, step: 0.5 });
-        this.wScale = this.addWidget("number", "Escalado a", 1.0, v => { that.properties.a = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.1, max: 10, step: 0.1 });
+        this.wShift = this.addWidget("number", "Desplaz. t_0", 0.0, v => { that.properties.t0 = Number(v); dirtyPlots = true; }, { step: 0.5 });
+        this.wScale = this.addWidget("number", "Escalado a", 1.0, v => { that.properties.a = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.01, step: 0.1 });
         this.wInv = this.addWidget("toggle", "Inversión (-t)", false, v => { that.properties.inv = Boolean(v); dirtyPlots = true; });
 
         this.size = [215, 140];
@@ -473,7 +510,7 @@
             this.wShift.options.step = 0.5;
             this.wScale.name = "Escalado a";
             this.wScale.options.step = 0.1;
-            this.wScale.options.min = 0.1;
+            this.wScale.options.min = 0.01;
             this.wInv.name = "Inversión (-t)";
             if (this.properties.nombre === "y[n]") {
                 this.properties.nombre = "y(t)";
@@ -579,7 +616,7 @@
     LiteGraph.registerNodeType("Telecom/Transformacion", NodoTransformacion);
 
 
-    // --- GENERADOR DISCRETO MANUAL ---
+    // --- GENERADOR DISCRETO ---
     function NodoGeneradorDiscreto() {
         this.addOutput("x[n]", "signal");
         this.properties = { nombre: "x[n]", valores: "1.0, 0.5, -0.5, -1.0, 0.0, 0.5", n0: 0 };
@@ -587,7 +624,7 @@
         const that = this;
         this.addWidget("text", "Etiqueta", "x[n]", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.addWidget("text", "Valores", "1.0, 0.5, -0.5, -1.0, 0.0, 0.5", v => { that.properties.valores = v; dirtyPlots = true; });
-        this.addWidget("number", "Inicio n0", 0, v => { that.properties.n0 = parseInt(v) || 0; dirtyPlots = true; }, { min: -20, max: 20, step: 1 });
+        this.addWidget("number", "Inicio n0", 0, v => { that.properties.n0 = parseInt(v) || 0; dirtyPlots = true; }, { step: 1 });
         
         this.size = [220, 120];
         applyLightStyle(this, "#7dd3fc", "#ffffff");
@@ -623,15 +660,15 @@
     LiteGraph.registerNodeType("Telecom/GeneradorDiscreto", NodoGeneradorDiscreto);
 
 
-    // --- SECUENCIA DIGITAL (ACTUALIZADO: Tasa de Bits Rb y desfase t0) ---
+    // --- SECUENCIA DIGITAL ---
     function NodoDigital() {
         this.addOutput("d(t)", "signal");
         this.properties = { 
             nombre: "d(t)", 
             bits: "10110010", 
             codigo: "NRZ Unipolar (0/1)", 
-            rb: 2.0,         // Tasa en bps (bits por segundo)
-            t_start: 0.0,    // Inicio temporal en segundos
+            rb: 2.0,         
+            t_start: 0.0,    
             amp: 1.0 
         };
         
@@ -639,19 +676,19 @@
         this.addWidget("text", "Etiqueta", "d(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.addWidget("text", "Bits", "10110010", v => { that.properties.bits = v; dirtyPlots = true; });
         this.addWidget("combo", "Código", "NRZ Unipolar (0/1)", v => { that.properties.codigo = v; dirtyPlots = true; }, { 
-            values: ["NRZ Unipolar (0/1)", "NRZ Polar (-1/+1)", "Manchester"] 
+            values: ["NRZ Unipolar (0/1)", "RZ Unipolar (0/1)", "NRZ Polar (-1/+1)", "Manchester"] 
         });
         this.addWidget("number", "Tasa Rb (bps)", 2.0, v => { that.properties.rb = Math.max(0.1, Number(v)); dirtyPlots = true; }, { 
-            min: 0.1, max: 100, step: 0.5 
+            min: 0.1, step: 0.5 
         });
         this.addWidget("number", "Inicio t0 (s)", 0.0, v => { that.properties.t_start = Number(v); dirtyPlots = true; }, { 
-            min: -20, max: 20, step: 0.2 
+            step: 0.2 
         });
         this.addWidget("number", "Amplitud", 1.0, v => { that.properties.amp = Number(v); dirtyPlots = true; }, { 
-            min: 0.2, max: 10, step: 0.1 
+            step: 0.1 
         });
         
-        this.size = [230, 180];
+        this.size = [230, 185];
         applyLightStyle(this, "#bfdbfe", "#ffffff");
     }
     NodoDigital.title = "Secuencia Digital";
@@ -680,6 +717,9 @@
             if (codigo === "NRZ Unipolar (0/1)") {
                 return bit ? amp : 0;
             }
+            if (codigo === "RZ Unipolar (0/1)") {
+                return (bit && posInBit < 0.5) ? amp : 0;
+            }
             if (codigo === "NRZ Polar (-1/+1)") {
                 return bit ? amp : -amp;
             }
@@ -691,6 +731,7 @@
 
         this.setOutputData(0, { 
             name: nombre || "d(t)", 
+            rawBits: cleanBits,
             values: values, 
             discrete: false, 
             isPeriodic: false,
@@ -711,8 +752,8 @@
 
         const that = this;
         this.addWidget("text", "Etiqueta", "y_sum", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "Factor k1", 1.0, v => { that.properties.k1 = Number(v); dirtyPlots = true; }, { min: -10, max: 10, step: 0.1 });
-        this.addWidget("number", "Factor k2", 1.0, v => { that.properties.k2 = Number(v); dirtyPlots = true; }, { min: -10, max: 10, step: 0.1 });
+        this.addWidget("number", "Factor k1", 1.0, v => { that.properties.k1 = Number(v); dirtyPlots = true; }, { step: 0.1 });
+        this.addWidget("number", "Factor k2", 1.0, v => { that.properties.k2 = Number(v); dirtyPlots = true; }, { step: 0.1 });
 
         this.size = [190, 115];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
@@ -785,7 +826,7 @@
 
         const that = this;
         this.addWidget("text", "Etiqueta", "y_mult", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "Ganancia k", 1.0, v => { that.properties.gain = Number(v); dirtyPlots = true; }, { min: -10, max: 10, step: 0.1 });
+        this.addWidget("number", "Ganancia k", 1.0, v => { that.properties.gain = Number(v); dirtyPlots = true; }, { step: 0.1 });
 
         this.size = [190, 95];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
@@ -944,8 +985,8 @@
         this.addWidget("text", "Etiqueta", "y_filt(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.addWidget("combo", "Tipo", "Paso Bajo (LPF)", v => { that.properties.tipo = v; dirtyPlots = true; }, { values: ["Paso Bajo (LPF)", "Paso Alto (HPF)", "Paso Banda (BPF)"] });
         this.addWidget("combo", "Resp.", "Ideal", v => { that.properties.aprox = v; dirtyPlots = true; }, { values: ["Ideal", "Butterworth"] });
-        this.addWidget("number", "fc / f0 (Hz)", 10, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 0.2, max: 150, step: 0.5 });
-        this.addWidget("number", "Ganancia", 1.0, v => { that.properties.gain = Number(v); dirtyPlots = true; }, { min: 0.1, max: 10, step: 0.1 });
+        this.addWidget("number", "fc / f0 (Hz)", 10, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
+        this.addWidget("number", "Ganancia", 1.0, v => { that.properties.gain = Number(v); dirtyPlots = true; }, { step: 0.1 });
         this.addWidget("toggle", "Ver |H(f)|", true, v => { that.properties.showH = Boolean(v); dirtyPlots = true; });
 
         this.size = [215, 190];
@@ -1020,7 +1061,7 @@
         this.properties = { nombre: "xs(t)", fs_sample: 20 };
         const that = this;
         this.addWidget("text", "Etiqueta", "xs(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "fs (Hz)", 20, v => { that.properties.fs_sample = Number(v); dirtyPlots = true; }, { min: 0.5, max: 200, step: 0.5 });
+        this.addWidget("number", "fs (Hz)", 20, v => { that.properties.fs_sample = Number(v); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
         this.size = [195, 95];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
@@ -1029,7 +1070,7 @@
         let in1 = this.getInputData(0);
         if (!in1) return;
         
-        const fs_s = Math.max(0.5, this.properties.fs_sample);
+        const fs_s = Math.max(0.1, this.properties.fs_sample);
         const Ts = 1 / fs_s;
         const { tMin, tMax, dt } = getCurrentTimeVector();
         const { nombre } = this.properties;
@@ -1077,9 +1118,9 @@
         this.properties = { nombre: "s_AM(t)", fc: 25, mu: 0.8, Ac: 1 };
         const that = this;
         this.addWidget("text", "Etiqueta", "s_AM(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 1, max: 100, step: 1 });
-        this.addWidget("number", "Índice Mod μ", 0.8, v => { that.properties.mu = Number(v); dirtyPlots = true; }, { min: 0, max: 2, step: 0.1 });
-        this.addWidget("number", "Amplitud Ac", 1, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { min: 0.5, max: 5, step: 0.5 });
+        this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.addWidget("number", "Índice Mod μ", 0.8, v => { that.properties.mu = Number(v); dirtyPlots = true; }, { step: 0.1 });
+        this.addWidget("number", "Amplitud Ac", 1, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { step: 0.2 });
         this.size = [210, 135];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
@@ -1096,53 +1137,191 @@
     LiteGraph.registerNodeType("Telecom/ModuladorAM", NodoModuladorAM);
 
 
-    // --- MODULADOR FM ---
+    // --- MODULADOR FM (ÍNDICE BETA LIBRE) ---
     function NodoModuladorFM() {
         this.addInput("m(t)", "signal");
         this.addOutput("s_FM(t)", "signal");
-        this.properties = { nombre: "s_FM(t)", fc: 25, beta: 2, Ac: 1 };
+        this.properties = { nombre: "s_FM(t)", fc: 25, beta: 5, Ac: 1 };
+        
         const that = this;
         this.addWidget("text", "Etiqueta", "s_FM(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 1, max: 100, step: 1 });
-        this.addWidget("number", "Índice β", 2, v => { that.properties.beta = Number(v); dirtyPlots = true; }, { min: 0.1, max: 10, step: 0.1 });
-        this.addWidget("number", "Amplitud Ac", 1, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { min: 0.5, max: 5, step: 0.5 });
-        this.size = [210, 135];
+        this.addWidget("number", "Portadora fc (Hz)", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.addWidget("number", "Índice β", 5, v => { that.properties.beta = Number(v); dirtyPlots = true; }, { min: 0, step: 0.5 });
+        this.addWidget("number", "Amplitud Ac", 1, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { step: 0.2 });
+
+        this.size = [220, 140];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorFM.title = "Modulador FM";
+
     NodoModuladorFM.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
         if (!in1) return;
+
         const { fc, beta, Ac, nombre } = this.properties;
         const { t, dt } = getCurrentTimeVector();
-        
         const m = in1.values;
-        let integral = new Array(N);
-        let acc = 0;
-        for (let i = 0; i < N; i++) {
-            acc += m[i] * dt;
-            integral[i] = acc;
+
+        let maxAmp = 1.0;
+        if (m && m.length > 0) {
+            let peak = 0;
+            for (let i = 0; i < m.length; i++) {
+                let absV = Math.abs(m[i]);
+                if (absV > peak) peak = absV;
+            }
+            if (peak > 1e-4) maxAmp = peak;
         }
 
-        let meanInt = 0;
-        for (let i = 0; i < N; i++) meanInt += integral[i];
-        meanInt /= N;
-
-        let maxDev = 0;
-        for (let i = 0; i < N; i++) {
-            integral[i] -= meanInt;
-            let absVal = Math.abs(integral[i]);
-            if (absVal > maxDev) maxDev = absVal;
+        let fRef = 2.0;
+        if (in1.Rb) {
+            fRef = in1.Rb;
         }
 
-        const normFactor = maxDev > 1e-6 ? (beta / maxDev) : 0;
-        let values = t.map((time, idx) => {
-            return Ac * Math.cos(2 * Math.PI * fc * time + integral[idx] * normFactor);
+        const deltaF = Number(beta) * fRef;
+
+        let phase = 0;
+        let values = new Array(N);
+
+        for (let i = 0; i < N; i++) {
+            let mNorm = m[i] / maxAmp;
+            let fInst = fc + deltaF * mNorm;
+            phase += 2 * Math.PI * fInst * dt;
+            values[i] = Ac * Math.cos(phase);
+        }
+
+        this.setOutputData(0, {
+            name: nombre || "s_FM(t)",
+            values: values,
+            discrete: false,
+            isPeriodic: in1.isPeriodic !== undefined ? in1.isPeriodic : true,
+            dt: dt
         });
-
-        this.setOutputData(0, { name: nombre || "s_FM(t)", values, discrete: false, isPeriodic: true, dt: dt });
     };
     LiteGraph.registerNodeType("Telecom/ModuladorFM", NodoModuladorFM);
+
+
+    // --- MODULADOR PM (PHASE MODULATION) ---
+    function NodoModuladorPM() {
+        this.addInput("m(t)", "signal");
+        this.addOutput("s_PM(t)", "signal");
+        this.properties = { nombre: "s_PM(t)", fc: 25, kp: 1.5, Ac: 1.0 };
+
+        const that = this;
+        this.addWidget("text", "Etiqueta", "s_PM(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
+        this.addWidget("number", "Portadora fc (Hz)", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.addWidget("number", "Sensibilidad kp (rad)", 1.5, v => { that.properties.kp = Number(v); dirtyPlots = true; }, { step: 0.2 });
+        this.addWidget("number", "Amplitud Ac", 1.0, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { step: 0.2 });
+
+        this.size = [220, 140];
+        applyLightStyle(this, "#fde68a", "#ffffff");
+    }
+    NodoModuladorPM.title = "Modulador PM";
+    NodoModuladorPM.prototype.onExecute = function() {
+        let in1 = this.getInputData(0);
+        if (!in1) return;
+
+        const { fc, kp, Ac, nombre } = this.properties;
+        const { t, dt } = getCurrentTimeVector();
+        const m = in1.values;
+
+        let values = t.map((time, idx) => Ac * Math.cos(2 * Math.PI * fc * time + kp * m[idx]));
+
+        this.setOutputData(0, {
+            name: nombre || "s_PM(t)",
+            values: values,
+            discrete: false,
+            isPeriodic: in1.isPeriodic !== undefined ? in1.isPeriodic : true,
+            dt: dt
+        });
+    };
+    LiteGraph.registerNodeType("Telecom/ModuladorPM", NodoModuladorPM);
+
+
+    // --- MODULADOR QAM (4-QAM / 16-QAM) ---
+    function NodoModuladorQAM() {
+        this.addInput("d(t)", "signal");
+        this.addOutput("s_QAM(t)", "signal");
+        this.properties = { 
+            nombre: "s_QAM(t)", 
+            tipo: "4-QAM (QPSK)", 
+            fc: 20, 
+            rb: 4, 
+            Ac: 1.0,
+            bits: "11010010" 
+        };
+
+        const that = this;
+        this.addWidget("text", "Etiqueta", "s_QAM(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
+        this.addWidget("combo", "Constelación", "4-QAM (QPSK)", v => { that.properties.tipo = v; dirtyPlots = true; }, { 
+            values: ["4-QAM (QPSK)", "16-QAM"] 
+        });
+        this.addWidget("number", "Portadora fc (Hz)", 20, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.addWidget("number", "Tasa Rb (bps)", 4, v => { that.properties.rb = Math.max(0.1, Number(v)); dirtyPlots = true; }, { step: 0.5 });
+        this.addWidget("text", "Bits (fallback)", "11010010", v => { that.properties.bits = v; dirtyPlots = true; });
+
+        this.size = [230, 165];
+        applyLightStyle(this, "#fde68a", "#ffffff");
+    }
+    NodoModuladorQAM.title = "Modulador QAM";
+
+    NodoModuladorQAM.prototype.onExecute = function() {
+        let in1 = this.getInputData(0);
+        let bitStr = (in1 && in1.rawBits) ? in1.rawBits : (this.properties.bits || "11010010");
+        bitStr = bitStr.replace(/[^01]/g, "");
+        if (bitStr.length === 0) bitStr = "1101";
+
+        const { tipo, fc, Ac, nombre } = this.properties;
+        const rb = (in1 && in1.Rb) ? in1.Rb : Math.max(0.1, Number(this.properties.rb || 4));
+        const kBits = (tipo === "4-QAM (QPSK)") ? 2 : 4;
+        const Ts = kBits / rb;
+        const { t, dt } = getCurrentTimeVector();
+
+        const gray4 = {
+            "00": [-1, -1], "01": [-1, 1],
+            "11": [1, 1],   "10": [1, -1]
+        };
+
+        const gray16_1D = { "00": -3, "01": -1, "11": 1, "10": 3 };
+
+        function getIQ(symbolBits) {
+            if (kBits === 2) {
+                return gray4[symbolBits] || [0, 0];
+            } else {
+                let bi = symbolBits.substring(0, 2);
+                let bq = symbolBits.substring(2, 4);
+                let I = (gray16_1D[bi] !== undefined ? gray16_1D[bi] : 0) / Math.sqrt(10);
+                let Q = (gray16_1D[bq] !== undefined ? gray16_1D[bq] : 0) / Math.sqrt(10);
+                return [I, Q];
+            }
+        }
+
+        let numSymbols = Math.floor(bitStr.length / kBits);
+        if (numSymbols === 0) {
+            bitStr = bitStr.padEnd(kBits, "0");
+            numSymbols = 1;
+        }
+
+        let tStart = 0;
+        let tEnd = tStart + numSymbols * Ts;
+
+        let values = t.map(time => {
+            if (time < tStart || time >= tEnd) return 0;
+            let symIdx = Math.floor((time - tStart) / Ts);
+            if (symIdx >= numSymbols) symIdx = numSymbols - 1;
+            let symBits = bitStr.substring(symIdx * kBits, (symIdx + 1) * kBits);
+            let [I, Q] = getIQ(symBits);
+            return Ac * (I * Math.cos(2 * Math.PI * fc * time) - Q * Math.sin(2 * Math.PI * fc * time));
+        });
+
+        this.setOutputData(0, {
+            name: nombre || "s_QAM(t)",
+            values: values,
+            discrete: false,
+            isPeriodic: false,
+            dt: dt
+        });
+    };
+    LiteGraph.registerNodeType("Telecom/ModuladorQAM", NodoModuladorQAM);
 
 
     // --- DETECTOR DE ENVOLVENTE ---
@@ -1153,7 +1332,7 @@
 
         const that = this;
         this.addWidget("text", "Etiqueta", "m_rec(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "Tau RC (s)", 0.04, v => { that.properties.tau = Number(v); dirtyPlots = true; }, { min: 0.002, max: 0.3, step: 0.005 });
+        this.addWidget("number", "Tau RC (s)", 0.04, v => { that.properties.tau = Number(v); dirtyPlots = true; }, { step: 0.005 });
         this.addWidget("toggle", "Quitar DC", false, v => { that.properties.removeDC = Boolean(v); dirtyPlots = true; });
 
         this.size = [220, 115];
@@ -1223,10 +1402,23 @@
     };
     LiteGraph.registerNodeType("Telecom/Outport", NodoOutport);
 
+    // Función auxiliar: Genera un Hash SHA-256 irreversible usando Web Crypto API
+    async function sha256(message) {
+        if (!message) return "";
+        const msgBuffer = new TextEncoder().encode(message);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // --- SUBSISTEMA CON BLOQUEO POR CONTRASEÑA HASH ---
     function NodoSubgrafo() {
         this.addInput("In", "signal");
         this.addOutput("Out", "signal");
-        this.properties = { nombre: "Subsistema" };
+        this.properties = { 
+            nombre: "Subsistema",
+            passwordHash: "" // Guarda el hash irreversible, nunca la clave en texto plano
+        };
         this.subgraph = new LiteGraph.LGraph();
         this.subgraph._parent_node = this;
 
@@ -1239,14 +1431,90 @@
         this.subgraph.add(outp);
 
         const that = this;
-        this.addWidget("text", "Nombre", "Subsistema", v => that.properties.nombre = v);
+        this.addWidget("text", "Nombre", this.properties.nombre, v => {
+            that.properties.nombre = v;
+            that.updateLockTitle();
+        });
         
         this.size = [190, 80];
         applyLightStyle(this, "#ec4899", "#ffffff");
+        this.updateLockTitle();
     }
     NodoSubgrafo.title = "Caja Subsistema";
-    NodoSubgrafo.prototype.onDblClick = function() {
+
+    // Actualiza el icono de candado en el encabezado de la caja
+    NodoSubgrafo.prototype.updateLockTitle = function() {
+        const isLocked = Boolean(this.properties.passwordHash && this.properties.passwordHash.length > 0);
+        this.title = (isLocked ? "🔒 " : "🔓 ") + (this.properties.nombre || "Subsistema");
+        this.setDirtyCanvas(true, true);
+    };
+
+    // Menú contextual con clic derecho sobre el nodo para gestionar la contraseña
+    NodoSubgrafo.prototype.getExtraMenuOptions = function(canvas, options) {
+        const that = this;
+        const isLocked = Boolean(this.properties.passwordHash);
+
+        if (!isLocked) {
+            options.push({
+                content: "🔒 Proteger con Contraseña...",
+                callback: async () => {
+                    const pass = window.prompt(`Asigna una contraseña para proteger "${that.properties.nombre}":`);
+                    if (pass && pass.trim().length > 0) {
+                        that.properties.passwordHash = await sha256(pass.trim());
+                        that.updateLockTitle();
+                        alert("✅ Subsistema protegido con contraseña. Al guardar el esquemático, quedará cifrado de forma segura.");
+                    }
+                }
+            });
+        } else {
+            options.push({
+                content: "🔓 Quitar Contraseña...",
+                callback: async () => {
+                    const pass = window.prompt("Introduce la contraseña actual para eliminar la protección:");
+                    if (pass === null) return;
+                    const testHash = await sha256(pass.trim());
+                    if (testHash === that.properties.passwordHash) {
+                        that.properties.passwordHash = "";
+                        that.updateLockTitle();
+                        alert("🔓 Contraseña eliminada con éxito.");
+                    } else {
+                        alert("❌ Contraseña incorrecta. No se pudo desproteger.");
+                    }
+                }
+            });
+        }
+    };
+
+    // Validación al hacer doble clic para acceder al interior
+    NodoSubgrafo.prototype.onDblClick = async function() {
+        if (this.properties.passwordHash && this.properties.passwordHash.length > 0) {
+            const inputPass = window.prompt(`El subsistema "${this.properties.nombre}" está protegido.\nIntroduce la contraseña:`);
+            if (inputPass === null) return; // Cancelado
+
+            const inputHash = await sha256(inputPass.trim());
+            if (inputHash !== this.properties.passwordHash) {
+                alert("❌ Contraseña incorrecta. Acceso denegado.");
+                return;
+            }
+        }
         enterSubgraph(this);
+    };
+
+    NodoSubgrafo.prototype.onSerialize = function(o) {
+        if (this.subgraph) {
+            o.subgraph = this.subgraph.serialize();
+        }
+    };
+
+    NodoSubgrafo.prototype.onConfigure = function(o) {
+        if (o.subgraph) {
+            this.subgraph.clear();
+            this.subgraph.configure(o.subgraph);
+            this.subgraph._parent_node = this;
+            this.subgraph.start();
+            this.syncPortsFromInner();
+        }
+        this.updateLockTitle();
     };
 
     NodoSubgrafo.prototype.syncPortsFromInner = function() {
@@ -1403,7 +1671,7 @@
         const in1 = oscNode ? oscNode.lastSignal : null;
 
         const { t, tMin, tMax, dt } = getCurrentTimeVector();
-        const fMax = Math.abs(parseFloat(document.getElementById("fMax").value)) || 5.0;
+        const fMax = Math.abs(parseFloat(document.getElementById("fMax").value)) || 50.0;
 
         const { axis: active_f_axis } = getActiveFrequencyAxis(fMax);
 
@@ -1641,6 +1909,7 @@
         currentGraph = node.subgraph;
         canvas.setGraph(currentGraph);
         document.getElementById("subgraph-banner").style.display = "block";
+        syncAllWidgets(currentGraph);
         dirtyPlots = true;
     }
 
@@ -1651,6 +1920,7 @@
         currentGraph = mainGraph;
         canvas.setGraph(mainGraph);
         document.getElementById("subgraph-banner").style.display = "none";
+        syncAllWidgets(mainGraph);
         dirtyPlots = true;
     }
 
@@ -1728,6 +1998,165 @@
         dirtyPlots = true;
     }
 
+    // ==========================================
+    // 6. GESTIÓN DE ESQUEMÁTICOS (GUARDAR / CARGAR)
+    // ==========================================
+    function saveGraphToFile() {
+        const graphData = mainGraph.serialize();
+        const jsonStr = JSON.stringify(graphData, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "esquematico_telecom.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function loadGraphFromFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                restaurarEsquematico(data);
+            } catch (err) {
+                alert("Error al cargar el archivo de esquemático: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = "";
+    }
+
+    function saveToLocalStorage() {
+        const graphData = mainGraph.serialize();
+        localStorage.setItem("simutelecom_saved_graph", JSON.stringify(graphData));
+        alert("Esquemático guardado correctamente en el navegador.");
+    }
+
+    function loadFromLocalStorage() {
+        const saved = localStorage.getItem("simutelecom_saved_graph");
+        if (!saved) {
+            alert("No hay ningún esquemático guardado previamente en el navegador.");
+            return;
+        }
+        try {
+            const data = JSON.parse(saved);
+            restaurarEsquematico(data);
+        } catch (err) {
+            alert("Error al restaurar esquemático: " + err.message);
+        }
+    }
+
+    // Sincroniza recursivamente las propiedades deserializadas en el widget.value visual
+    function syncAllWidgets(g) {
+        if (!g || !g._nodes) return;
+        g._nodes.forEach(node => {
+            if (node.type === "Telecom/GeneradorContinuo" && typeof node.updateWidgetVisibility === "function") {
+                node.updateWidgetVisibility();
+            }
+            if (node.widgets && node.properties) {
+                node.widgets.forEach(w => {
+                    let propKey = null;
+                    if (w.name.includes("Etiqueta") || w.name.includes("Nombre") || w.name.includes("ID")) propKey = "nombre";
+                    else if (w.name.includes("Señal")) propKey = "tipo";
+                    else if (w.name.includes("Amplitud")) propKey = "amp";
+                    else if (w.name.includes("Frec") || w.name.includes("Portadora")) propKey = (node.properties.fc !== undefined ? "fc" : "freq");
+                    else if (w.name.includes("Ancho") || w.name.includes("Duración")) propKey = "ancho";
+                    else if (w.name.includes("Tau")) propKey = "tau";
+                    else if (w.name.includes("Desplaz")) propKey = "t0";
+                    else if (w.name.includes("Escalado") || w.name.includes("Diezmado")) propKey = "a";
+                    else if (w.name.includes("Inversión")) propKey = "inv";
+                    else if (w.name.includes("Valores")) propKey = "valores";
+                    else if (w.name.includes("Inicio n0")) propKey = "n0";
+                    else if (w.name.includes("Bits")) propKey = "bits";
+                    else if (w.name.includes("Código")) propKey = "codigo";
+                    else if (w.name.includes("Tasa")) propKey = "rb";
+                    else if (w.name.includes("Inicio t0")) propKey = "t_start";
+                    else if (w.name.includes("k1")) propKey = "k1";
+                    else if (w.name.includes("k2")) propKey = "k2";
+                    else if (w.name.includes("Ganancia")) propKey = (node.properties.gain !== undefined ? "gain" : "k");
+                    else if (w.name.includes("Tipo")) propKey = "tipo";
+                    else if (w.name.includes("Resp")) propKey = "aprox";
+                    else if (w.name.includes("Ancho B")) propKey = "bw";
+                    else if (w.name.includes("Orden")) propKey = "orden";
+                    else if (w.name.includes("Ver |H(f)|")) propKey = "showH";
+                    else if (w.name.includes("fs")) propKey = "fs_sample";
+                    else if (w.name.includes("Índice Mod")) propKey = "mu";
+                    else if (w.name.includes("Índice β")) propKey = "beta";
+                    else if (w.name.includes("Sensibilidad")) propKey = "kp";
+                    else if (w.name.includes("Constelación")) propKey = "tipo";
+                    else if (w.name.includes("Quitar DC")) propKey = "removeDC";
+
+                    if (propKey && node.properties[propKey] !== undefined) {
+                        w.value = node.properties[propKey];
+                    }
+                });
+            }
+
+            if (node.title && node.properties && node.properties.nombre) {
+                if (node.type === "Telecom/Osciloscopio") node.title = "📊 " + node.properties.nombre;
+                else if (node.type === "Telecom/Inport") node.title = "↳ " + node.properties.nombre;
+                else if (node.type === "Telecom/Outport") node.title = "↱ " + node.properties.nombre;
+            }
+
+            if (node.subgraph) {
+                syncAllWidgets(node.subgraph);
+            }
+        });
+        g.setDirtyCanvas(true, true);
+    }
+
+    function restaurarEsquematico(data) {
+        mainGraph.clear();
+        activeOscilloscopes.clear();
+        
+        // 1. Restaurar topología completa
+        mainGraph.configure(data);
+
+        // 2. Localizar y activar los subgrafos internos
+        const subgrafos = mainGraph.findNodesByType("Telecom/Subgrafo");
+        subgrafos.forEach(sgNode => {
+            if (sgNode.subgraph) {
+                sgNode.subgraph.start();
+                sgNode.syncPortsFromInner();
+            }
+        });
+
+        // 3. Sincronizar todos los widgets visuales con sus propiedades numéricas cargadas
+        syncAllWidgets(mainGraph);
+
+        // 4. Registrar osciloscopios del grafo raíz y de subgrafos anidados
+        function registrarOsciloscopios(graph) {
+            const oscNodes = graph.findNodesByType("Telecom/Osciloscopio");
+            oscNodes.forEach(node => {
+                activeOscilloscopes.set(node.id, node);
+            });
+        }
+        registrarOsciloscopios(mainGraph);
+        subgrafos.forEach(sgNode => {
+            if (sgNode.subgraph) registrarOsciloscopios(sgNode.subgraph);
+        });
+
+        syncOscSelector();
+        mainGraph.start();
+        
+        // 5. Forzar ciclos de simulación y refresco de interfaz inmediato
+        mainGraph.runStep(1);
+        mainGraph.runStep(1);
+
+        dirtyPlots = true;
+        updatePlots();
+        canvas.setDirty(true, true);
+        resetView();
+    }
+
+    // Inicialización del motor y del bucle principal
     resizeCanvas();
     mainGraph.start();
     requestAnimationFrame(mainLoop);
