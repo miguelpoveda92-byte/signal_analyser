@@ -22,25 +22,45 @@
         /* 1. Panel Lateral */
         #sidebar {
             width: 255px; min-width: 255px; background: #ffffff; border-right: 1px solid #e2e8f0;
-            padding: 12px 14px; display: flex; flex-direction: column; gap: 5px;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.02); z-index: 10; overflow-y: auto;
+            padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.02); z-index: 10; overflow-y: auto; overflow-x: hidden;
         }
-        .brand { font-size: 1.05rem; font-weight: 700; color: #0f172a; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; }
+        .brand { font-size: 1.05rem; font-weight: 700; color: #0f172a; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .category-title { 
             font-size: 0.68rem; text-transform: uppercase; color: #64748b; 
-            font-weight: 700; margin-top: 7px; margin-bottom: 1px; letter-spacing: 0.5px;
+            font-weight: 700; margin-top: 6px; margin-bottom: 2px; letter-spacing: 0.5px;
+            cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between;
+            padding: 5px 6px; border-radius: 5px; transition: background 0.15s ease, color 0.15s ease;
+            flex-shrink: 0;
+        }
+        .category-title:hover {
+            background: #f1f5f9; color: #1e293b;
+        }
+        .category-title .accordion-arrow {
+            font-size: 0.65rem; transition: transform 0.2s ease; display: inline-block;
+        }
+        .category-title.collapsed .accordion-arrow {
+            transform: rotate(-90deg);
+        }
+        .category-content {
+            display: flex; flex-direction: column; gap: 5px;
+            width: 100%; flex-shrink: 0;
+        }
+        .category-content.collapsed {
+            display: none !important;
         }
         .module-btn {
             background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 7px;
             padding: 7px 10px; text-align: left; font-size: 0.81rem; color: #334155;
             cursor: pointer; transition: all 0.15s ease; font-weight: 500;
             display: flex; align-items: center; justify-content: space-between;
+            flex-shrink: 0; min-height: 33px;
         }
         .module-btn:hover { 
             background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; 
             transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.04); 
         }
-        .module-btn span.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .module-btn span.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 
         /* 2. Lienzo Central */
         #canvas-container { flex: 1; position: relative; height: 100%; background: #f1f5f9; overflow: hidden; }
@@ -64,7 +84,7 @@
             padding: 4px 10px; margin-left: 10px; border-radius: 4px; cursor: pointer;
         }
 
-        /* Botones flotantes de Zoom en Lienzo para Móvil */
+        /* Botones flotantes de Zoom y Herramientas en Lienzo */
         #mobile-zoom-controls {
             position: absolute; bottom: 16px; left: 16px; z-index: 25;
             display: flex; flex-direction: column; gap: 6px;
@@ -77,6 +97,7 @@
             touch-action: manipulation;
         }
         .zoom-btn:active { background: #e2e8f0; transform: scale(0.95); }
+        .zoom-btn.active-mode { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; }
 
         /* Barra Divisoria Redimensionable */
         #resizer {
@@ -118,6 +139,7 @@
         .action-btn {
             background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569;
             padding: 6px; border-radius: 6px; font-size: 0.77rem; cursor: pointer; font-weight: 600; margin-top: 2px;
+            flex-shrink: 0; width: 100%;
         }
         .action-btn:hover { background: #e2e8f0; }
 
@@ -136,80 +158,141 @@
     <div id="sidebar">
         <div class="brand">📡 SimuTelecom</div>
         
-        <div class="category-title">1. Fuentes de Señal</div>
-        <button class="module-btn" onclick="addModule('Telecom/GeneradorContinuo')">
-            <span>Generador Continuo</span><span class="dot" style="background:#3b82f6"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/GeneradorDiscreto')">
-            <span>Generador Discreto</span><span class="dot" style="background:#0284c7"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/Digital')">
-            <span>Secuencia Digital (bps)</span><span class="dot" style="background:#3b82f6"></span>
-        </button>
+        <div class="category-title" onclick="toggleSidebarSection(this)">
+            <span>1. Fuentes de Señal</span>
+            <span class="accordion-arrow">▼</span>
+        </div>
+        <div class="category-content">
+            <button class="module-btn" onclick="addModule('Telecom/GeneradorContinuo')">
+                <span>Generador Continuo</span><span class="dot" style="background:#3b82f6"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/GeneradorDiscreto')">
+                <span>Generador Discreto</span><span class="dot" style="background:#0284c7"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/Digital')">
+                <span>Secuencia Digital (bps)</span><span class="dot" style="background:#3b82f6"></span>
+            </button>
+        </div>
 
-        <div class="category-title">2. Transformación y Sistemas</div>
-        <button class="module-btn" onclick="addModule('Telecom/Transformacion')">
-            <span>Transf. Variable (t0, a)</span><span class="dot" style="background:#6366f1"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/Sumador')">
-            <span>Sumador Ponderado</span><span class="dot" style="background:#10b981"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/Multiplicador')">
-            <span>Multiplicador / Mezclador</span><span class="dot" style="background:#10b981"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/Convolucion')">
-            <span>Convolución (Dis/Cont)</span><span class="dot" style="background:#10b981"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/Filtro')">
-            <span>Filtro LTI</span><span class="dot" style="background:#0d9488"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/Muestreo')">
-            <span>Muestreo Ideal (xs)</span><span class="dot" style="background:#10b981"></span>
-        </button>
+        <div class="category-title" onclick="toggleSidebarSection(this)">
+            <span>2. Transformación y Sistemas</span>
+            <span class="accordion-arrow">▼</span>
+        </div>
+        <div class="category-content">
+            <button class="module-btn" onclick="addModule('Telecom/Transformacion')">
+                <span>Transf. Variable (t0, a)</span><span class="dot" style="background:#6366f1"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/Sumador')">
+                <span>Sumador Ponderado</span><span class="dot" style="background:#10b981"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/Multiplicador')">
+                <span>Multiplicador / Mezclador</span><span class="dot" style="background:#10b981"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/Convolucion')">
+                <span>Convolución (Dis/Cont)</span><span class="dot" style="background:#10b981"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/Filtro')">
+                <span>Filtro LTI</span><span class="dot" style="background:#0d9488"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/Muestreo')">
+                <span>Muestreo Ideal (xs)</span><span class="dot" style="background:#10b981"></span>
+            </button>
+        </div>
 
-        <div class="category-title">3. Modulación y Demodulación</div>
-        <button class="module-btn" onclick="addModule('Telecom/ModuladorAM')">
-            <span>Modulador AM</span><span class="dot" style="background:#f59e0b"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/ModuladorFM')">
-            <span>Modulador FM (Índice β)</span><span class="dot" style="background:#f59e0b"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/ModuladorPM')">
-            <span>Modulador PM</span><span class="dot" style="background:#f59e0b"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/ModuladorQAM')">
-            <span>Modulador QAM (4/16)</span><span class="dot" style="background:#f59e0b"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/DetectorEnvolvente')">
-            <span>Detector de Envolvente</span><span class="dot" style="background:#ea580c"></span>
-        </button>
+        <div class="category-title" onclick="toggleSidebarSection(this)">
+            <span>3. Modulación y Demodulación</span>
+            <span class="accordion-arrow">▼</span>
+        </div>
+        <div class="category-content">
+            <button class="module-btn" onclick="addModule('Telecom/ModuladorAM')">
+                <span>Modulador AM</span><span class="dot" style="background:#f59e0b"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/ModuladorFM')">
+                <span>Modulador FM (Índice β)</span><span class="dot" style="background:#f59e0b"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/ModuladorPM')">
+                <span>Modulador PM</span><span class="dot" style="background:#f59e0b"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/ModuladorQAM')">
+                <span>Modulador QAM (4/16)</span><span class="dot" style="background:#f59e0b"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/DemoduladorQAM')">
+                <span>Demodulador QAM</span><span class="dot" style="background:#ea580c"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/DetectorEnvolvente')">
+                <span>Detector de Envolvente</span><span class="dot" style="background:#ea580c"></span>
+            </button>
+        </div>
 
-        <div class="category-title">4. Subsistemas y Puertos</div>
-        <button class="module-btn" onclick="addModule('Telecom/Subgrafo')">
-            <span>Caja Subsistema</span><span class="dot" style="background:#ec4899"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/Inport')">
-            <span>↳ Puerto Entrada (In)</span><span class="dot" style="background:#f472b6"></span>
-        </button>
-        <button class="module-btn" onclick="addModule('Telecom/Outport')">
-            <span>↳ Puerto Salida (Out)</span><span class="dot" style="background:#f472b6"></span>
-        </button>
+        <div class="category-title" onclick="toggleSidebarSection(this)">
+            <span>4. Canal de Comunicaciones</span>
+            <span class="accordion-arrow">▼</span>
+        </div>
+        <div class="category-content">
+            <button class="module-btn" onclick="addModule('Telecom/Canal')">
+                <span>Canal (Aten/Ruido)</span><span class="dot" style="background:#f97316"></span>
+            </button>
+        </div>
 
-        <div class="category-title">5. Visualización</div>
-        <button class="module-btn" onclick="addModule('Telecom/Osciloscopio')">
-            <span>Añadir Osciloscopio</span><span class="dot" style="background:#8b5cf6"></span>
-        </button>
+        <div class="category-title" onclick="toggleSidebarSection(this)">
+            <span>5. Subsistemas y Puertos</span>
+            <span class="accordion-arrow">▼</span>
+        </div>
+        <div class="category-content">
+            <button class="module-btn" onclick="addModule('Telecom/Subgrafo')">
+                <span>Caja Subsistema</span><span class="dot" style="background:#ec4899"></span>
+            </button>
+            <button class="module-btn" onclick="encapsulateSelectedNodes()" title="También puedes usar Shift + Arrastrar o el botón ⬚ del lienzo para seleccionar bloques">
+                <span>📦 Encapsular Selección</span><span class="dot" style="background:#db2777"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/Inport')">
+                <span>↳ Puerto Entrada (In)</span><span class="dot" style="background:#f472b6"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/Outport')">
+                <span>↳ Puerto Salida (Out)</span><span class="dot" style="background:#f472b6"></span>
+            </button>
+        </div>
 
-        <div class="category-title">6. Gestión de Esquemas</div>
-        <button class="action-btn" onclick="saveGraphToFile()">💾 Guardar JSON</button>
-        <button class="action-btn" onclick="document.getElementById('fileInput').click()">📂 Cargar JSON</button>
-        <input type="file" id="fileInput" accept=".json" style="display:none;" onchange="loadGraphFromFile(event)">
-        <button class="action-btn" onclick="saveToLocalStorage()">📌 Guardar en Navegador</button>
-        <button class="action-btn" onclick="loadFromLocalStorage()">🔄 Cargar de Navegador</button>
+        <div class="category-title" onclick="toggleSidebarSection(this)">
+            <span>6. Visualización</span>
+            <span class="accordion-arrow">▼</span>
+        </div>
+        <div class="category-content">
+            <button class="module-btn" onclick="addModule('Telecom/Osciloscopio')">
+                <span>Añadir Osciloscopio</span><span class="dot" style="background:#8b5cf6"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/OsciloscopioOjo')">
+                <span>Osciloscopio Diagrama de Ojo</span><span class="dot" style="background:#a855f7"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/MedidorBER')">
+                <span>Medidor de BER (Tasa Error)</span><span class="dot" style="background:#ef4444"></span>
+            </button>
+        </div>
 
-        <div class="category-title">Acciones de Lienzo</div>
-        <button class="action-btn" onclick="resetView()">🔍 Centrar Lienzo</button>
-        <button class="action-btn" style="color:#dc2626;" onclick="clearCanvas()">🗑️ Vaciar Todo</button>
+        <div class="category-title" onclick="toggleSidebarSection(this)">
+            <span>7. Control y Esquemas</span>
+            <span class="accordion-arrow">▼</span>
+        </div>
+        <div class="category-content">
+            <div style="display: flex; gap: 4px; margin-top: 2px;">
+                <button id="btnPlayPause" class="action-btn" style="flex: 1; font-weight: 700; color: #9a3412; background: #ffedd5; border-color: #fdba74;" onclick="togglePlayPause()">▶ Reanudar Simulación</button>
+                <button id="btnStep" class="action-btn" style="width: 50px; display: block;" onclick="stepSimulation()" title="Avanzar 1 paso de simulación">⏭ Paso</button>
+            </div>
+            <button class="action-btn" onclick="saveGraphToFile()">💾 Guardar JSON</button>
+            <button class="action-btn" onclick="document.getElementById('fileInput').click()">📂 Cargar JSON</button>
+            <input type="file" id="fileInput" accept=".json" style="display:none;" onchange="loadGraphFromFile(event)">
+            <button class="action-btn" onclick="saveToLocalStorage()">📌 Guardar en Navegador</button>
+            <button class="action-btn" onclick="loadFromLocalStorage()">🔄 Cargar de Navegador</button>
+        </div>
+
+        <div class="category-title" onclick="toggleSidebarSection(this)">
+            <span>Acciones de Lienzo</span>
+            <span class="accordion-arrow">▼</span>
+        </div>
+        <div class="category-content">
+            <button class="action-btn" onclick="resetView()">🔍 Centrar Lienzo</button>
+            <button class="action-btn" style="color:#dc2626;" onclick="clearCanvas()">🗑️ Vaciar Todo</button>
+        </div>
     </div>
 
     <!-- Lienzo central -->
@@ -220,6 +303,9 @@
         </div>
         <button id="toggle-panel-btn" onclick="togglePlotPanel()">👁️ Ocultar Gráficas</button>
         <div id="mobile-zoom-controls">
+            <button class="zoom-btn" id="btnPlayPauseFloating" onclick="togglePlayPause()" title="Pausar / Iniciar ejecución continua">▶</button>
+            <button class="zoom-btn" id="btnSelectMode" onclick="toggleSelectionMode()" title="Alternar modo: Arrastrar Lienzo / Seleccionar Bloques (o mantén Shift al arrastrar)">⬚</button>
+            <button class="zoom-btn" onclick="encapsulateSelectedNodes()" title="Encapsular bloques seleccionados en Subsistema">📦</button>
             <button class="zoom-btn" onclick="applyZoom(1.2)" title="Acercar (Zoom In)">➕</button>
             <button class="zoom-btn" onclick="applyZoom(0.8)" title="Alejar (Zoom Out)">➖</button>
             <button class="zoom-btn" onclick="resetView()" title="Centrar">⛶</button>
@@ -250,18 +336,63 @@
             <div class="ctrl-item">
                 <button class="action-btn" id="btnToggleFreq" style="padding: 2px 7px; margin:0;" onclick="toggleFreqPlot()">Ocultar |X(f)|</button>
             </div>
+            <div class="ctrl-item" style="margin-left: auto;">
+                <button class="action-btn" style="padding: 2px 8px; margin: 0; background: #e0f2fe; color: #0369a1; border-color: #7dd3fc; font-weight: 700;" onclick="forcePlotUpdate()" title="Actualizar traza gráfica con los datos actuales">🔄 Refrescar Gráfica</button>
+            </div>
         </div>
         <div id="plot-time" class="plot-container"></div>
         <div id="plot-freq" class="plot-container"></div>
     </div>
 
-<script>
+    <script>
     // ==========================================
     // 1. MOTOR MATEMÁTICO ADAPTATIVO
     // ==========================================
     const N = 1000;
     let dirtyPlots = true;
     let showFreqSpectrum = true;
+    let isRunning = false;
+
+    function toggleSidebarSection(headerElem) {
+        headerElem.classList.toggle("collapsed");
+        const content = headerElem.nextElementSibling;
+        if (content && content.classList.contains("category-content")) {
+            content.classList.toggle("collapsed");
+        }
+    }
+
+    function togglePlayPause() {
+        isRunning = !isRunning;
+        const btn = document.getElementById("btnPlayPause");
+        const floatBtn = document.getElementById("btnPlayPauseFloating");
+        const stepBtn = document.getElementById("btnStep");
+
+        if (isRunning) {
+            btn.innerText = "⏸ Pausar Simulación";
+            btn.style.color = "#166534";
+            btn.style.background = "#dcfce7";
+            btn.style.borderColor = "#86efac";
+            if (floatBtn) floatBtn.innerText = "⏸";
+            if (stepBtn) stepBtn.style.display = "none";
+            dirtyPlots = true;
+        } else {
+            btn.innerText = "▶ Reanudar Simulación";
+            btn.style.color = "#9a3412";
+            btn.style.background = "#ffedd5";
+            btn.style.borderColor = "#fdba74";
+            if (floatBtn) floatBtn.innerText = "▶";
+            if (stepBtn) stepBtn.style.display = "block";
+        }
+    }
+
+    function stepSimulation() {
+        if (mainGraph) {
+            mainGraph.runStep(1);
+            dirtyPlots = true;
+            updatePlots();
+            canvas.setDirty(true, true);
+        }
+    }
 
     function getCurrentTimeVector() {
         let tMin = parseFloat(document.getElementById("tMin").value) || -5.0;
@@ -348,7 +479,7 @@
         } else if (tipo === "Paso Alto (HPF)") {
             H = (aprox === "Ideal") ? (absF >= fc ? 1 : 0) : (absF === 0 ? 0 : 1 / Math.sqrt(1 + Math.pow(fc / absF, 2 * orden)));
         } else if (tipo === "Paso Banda (BPF)") {
-            const halfBW = Math.max(0.5, bw / 2);
+            const halfBW = Math.max(0.05, bw / 2);
             const dist = Math.abs(absF - fc);
             H = (aprox === "Ideal") ? (dist <= halfBW ? 1 : 0) : 1 / Math.sqrt(1 + Math.pow(dist / halfBW, 2 * orden));
         }
@@ -374,7 +505,7 @@
     // --- GENERADOR CONTINUO ---
     function NodoGeneradorContinuo() {
         this.addOutput("x(t)", "signal");
-        this.properties = { nombre: "x(t)", tipo: "Pulso Rectangular", amp: 1, freq: 5, ancho: 4.0, tau: 0.5 };
+        this.properties = { nombre: "x(t)", tipo: "Pulso Rectangular", amp: 1, freq: 5, periodo: 0.2, ancho: 4.0, tau: 0.5 };
         
         const that = this;
         this.wName = this.addWidget("text", "Etiqueta", "x(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
@@ -386,6 +517,7 @@
         
         this.wAmp = this.addWidget("number", "Amplitud", 1, v => { that.properties.amp = Number(v); dirtyPlots = true; }, { step: 0.1 });
         this.wFreq = this.addWidget("number", "Frec (Hz)", 5, v => { that.properties.freq = Number(v); dirtyPlots = true; }, { step: 0.5 });
+        this.wPeriodo = this.addWidget("number", "Periodo T (s)", 0.2, v => { that.properties.periodo = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.01, step: 0.1 });
         this.wAncho = this.addWidget("number", "Duración (s)", 4.0, v => { that.properties.ancho = Number(v); dirtyPlots = true; }, { min: 0.05, step: 0.2 });
         this.wTau = this.addWidget("number", "Tau τ (s)", 0.5, v => { that.properties.tau = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.01, step: 0.05 });
         
@@ -398,24 +530,31 @@
         const tipo = this.properties.tipo;
         this.widgets = [this.wName, this.wType, this.wAmp];
         
-        if (tipo === "Coseno" || tipo === "Seno" || tipo === "Sinc (Sen Cardinal)") {
+        if (tipo === "Coseno" || tipo === "Seno") {
             this.widgets.push(this.wFreq);
-            this.size = [210, 140];
+            this.size = [270, 140];
+        } else if (tipo === "Sinc (Sen Cardinal)") {
+            if (this.properties.periodo === undefined) {
+                this.properties.periodo = this.properties.freq ? (1 / this.properties.freq) : 0.2;
+                this.wPeriodo.value = this.properties.periodo;
+            }
+            this.widgets.push(this.wPeriodo);
+            this.size = [270, 140];
         } else if (tipo === "Pulso Rectangular" || tipo === "Pulso Triangular" || tipo === "Función Rampa") {
             this.wAncho.name = (tipo === "Pulso Rectangular") ? "Ancho Pulso" : "Duración (s)";
             this.widgets.push(this.wAncho);
-            this.size = [210, 140];
+            this.size = [270, 140];
         } else if (tipo === "Exponencial Decreciente") {
             this.widgets.push(this.wTau);
-            this.size = [210, 140];
+            this.size = [270, 140];
         } else {
-            this.size = [210, 110];
+            this.size = [270, 110];
         }
         this.setDirtyCanvas(true, true);
     };
 
     NodoGeneradorContinuo.prototype.evalAt = function(time, dt) {
-        const { tipo, amp, freq, ancho, tau } = this.properties;
+        const { tipo, amp, freq, periodo, ancho, tau } = this.properties;
         const dur = Math.max(0.001, ancho || 1.0);
 
         if (tipo === "Coseno") return amp * Math.cos(2 * Math.PI * freq * time);
@@ -438,7 +577,8 @@
         }
 
         if (tipo === "Sinc (Sen Cardinal)") {
-            let arg = Math.PI * freq * time;
+            const T_null = Math.max(0.001, Number(periodo !== undefined ? periodo : (freq ? 1 / freq : 0.2)));
+            let arg = (Math.PI * time) / T_null;
             return Math.abs(arg) < 1e-6 ? amp : amp * (Math.sin(arg) / arg);
         }
 
@@ -481,7 +621,7 @@
         this.wScale = this.addWidget("number", "Escalado a", 1.0, v => { that.properties.a = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.01, step: 0.1 });
         this.wInv = this.addWidget("toggle", "Inversión (-t)", false, v => { that.properties.inv = Boolean(v); dirtyPlots = true; });
 
-        this.size = [215, 140];
+        this.size = [250, 140];
         applyLightStyle(this, "#c7d2fe", "#ffffff");
     }
     NodoTransformacion.title = "Transf. Variable";
@@ -626,7 +766,7 @@
         this.addWidget("text", "Valores", "1.0, 0.5, -0.5, -1.0, 0.0, 0.5", v => { that.properties.valores = v; dirtyPlots = true; });
         this.addWidget("number", "Inicio n0", 0, v => { that.properties.n0 = parseInt(v) || 0; dirtyPlots = true; }, { step: 1 });
         
-        this.size = [220, 120];
+        this.size = [265, 120];
         applyLightStyle(this, "#7dd3fc", "#ffffff");
     }
     NodoGeneradorDiscreto.title = "Generador Discreto";
@@ -688,7 +828,7 @@
             step: 0.1 
         });
         
-        this.size = [230, 185];
+        this.size = [275, 185];
         applyLightStyle(this, "#bfdbfe", "#ffffff");
     }
     NodoDigital.title = "Secuencia Digital";
@@ -737,6 +877,7 @@
             isPeriodic: false,
             Rb: rb,
             Tb: Tb,
+            t_start: tStart,
             dt: dt 
         });
     };
@@ -755,7 +896,7 @@
         this.addWidget("number", "Factor k1", 1.0, v => { that.properties.k1 = Number(v); dirtyPlots = true; }, { step: 0.1 });
         this.addWidget("number", "Factor k2", 1.0, v => { that.properties.k2 = Number(v); dirtyPlots = true; }, { step: 0.1 });
 
-        this.size = [190, 115];
+        this.size = [230, 115];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
     NodoSumador.title = "Sumador Ponderado";
@@ -828,7 +969,7 @@
         this.addWidget("text", "Etiqueta", "y_mult", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.addWidget("number", "Ganancia k", 1.0, v => { that.properties.gain = Number(v); dirtyPlots = true; }, { step: 0.1 });
 
-        this.size = [190, 95];
+        this.size = [230, 95];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
     NodoMultiplicador.title = "Mezclador (k·x1·x2)";
@@ -878,7 +1019,7 @@
         const that = this;
         this.addWidget("text", "Etiqueta", "y_conv", v => { that.properties.nombre = v; dirtyPlots = true; });
 
-        this.size = [185, 80];
+        this.size = [220, 80];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
     NodoConvolucion.title = "Convolución (Dis/Cont)";
@@ -982,22 +1123,43 @@
         };
 
         const that = this;
-        this.addWidget("text", "Etiqueta", "y_filt(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("combo", "Tipo", "Paso Bajo (LPF)", v => { that.properties.tipo = v; dirtyPlots = true; }, { values: ["Paso Bajo (LPF)", "Paso Alto (HPF)", "Paso Banda (BPF)"] });
-        this.addWidget("combo", "Resp.", "Ideal", v => { that.properties.aprox = v; dirtyPlots = true; }, { values: ["Ideal", "Butterworth"] });
-        this.addWidget("number", "fc / f0 (Hz)", 10, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
-        this.addWidget("number", "Ganancia", 1.0, v => { that.properties.gain = Number(v); dirtyPlots = true; }, { step: 0.1 });
-        this.addWidget("toggle", "Ver |H(f)|", true, v => { that.properties.showH = Boolean(v); dirtyPlots = true; });
+        this.wName = this.addWidget("text", "Etiqueta", "y_filt(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
+        this.wTipo = this.addWidget("combo", "Tipo", "Paso Bajo (LPF)", v => { 
+            that.properties.tipo = v; 
+            that.updateWidgetsVisibility();
+            dirtyPlots = true; 
+        }, { values: ["Paso Bajo (LPF)", "Paso Alto (HPF)", "Paso Banda (BPF)"] });
+        this.wAprox = this.addWidget("combo", "Resp.", "Ideal", v => { that.properties.aprox = v; dirtyPlots = true; }, { values: ["Ideal", "Butterworth"] });
+        this.wFc = this.addWidget("number", "fc (Hz)", 10, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
+        this.wBw = this.addWidget("number", "Ancho Bw (Hz)", 10, v => { that.properties.bw = Math.max(0.1, Number(v)); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
+        this.wGain = this.addWidget("number", "Ganancia", 1.0, v => { that.properties.gain = Number(v); dirtyPlots = true; }, { step: 0.1 });
+        this.wShowH = this.addWidget("toggle", "Ver |H(f)|", true, v => { that.properties.showH = Boolean(v); dirtyPlots = true; });
 
-        this.size = [215, 190];
+        this.updateWidgetsVisibility();
         applyLightStyle(this, "#99f6e4", "#ffffff");
     }
     NodoFiltro.title = "Filtro LTI";
+
+    NodoFiltro.prototype.updateWidgetsVisibility = function() {
+        const isBpf = this.properties.tipo === "Paso Banda (BPF)";
+        this.wFc.name = isBpf ? "f0 Central (Hz)" : "fc Corte (Hz)";
+        
+        if (isBpf) {
+            this.widgets = [this.wName, this.wTipo, this.wAprox, this.wFc, this.wBw, this.wGain, this.wShowH];
+            this.size = [260, 215];
+        } else {
+            this.widgets = [this.wName, this.wTipo, this.wAprox, this.wFc, this.wGain, this.wShowH];
+            this.size = [260, 190];
+        }
+        this.setDirtyCanvas(true, true);
+    };
+
     NodoFiltro.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
         if (!in1) return;
 
         const { tipo, aprox, fc, bw, orden, gain, nombre } = this.properties;
+        const bwVal = Math.max(0.1, Number(bw || 10));
         const { t, dt } = getCurrentTimeVector();
 
         let y = new Array(N).fill(0);
@@ -1024,7 +1186,7 @@
                 let tau = k * dt, sum = 0;
                 for (let i = 0; i < N_FILT; i++) {
                     let f_val = i * df_filt;
-                    let H_val = evaluateFilterH(f_val, tipo, aprox, fc, bw, orden, gain);
+                    let H_val = evaluateFilterH(f_val, tipo, aprox, fc, bwVal, orden, gain);
                     let weight = (i === 0) ? 0.5 : 1.0;
                     sum += 2 * weight * H_val * Math.cos(2 * Math.PI * f_val * tau) * df_filt;
                 }
@@ -1047,7 +1209,7 @@
             values: y,
             discrete: false,
             isPeriodic: in1.isPeriodic,
-            filterParams: { tipo, aprox, fc, bw, orden, gain, showH: this.properties.showH },
+            filterParams: { tipo, aprox, fc, bw: bwVal, orden, gain, showH: this.properties.showH },
             dt: dt
         });
     };
@@ -1062,7 +1224,7 @@
         const that = this;
         this.addWidget("text", "Etiqueta", "xs(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.addWidget("number", "fs (Hz)", 20, v => { that.properties.fs_sample = Number(v); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
-        this.size = [195, 95];
+        this.size = [230, 95];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
     NodoMuestreo.title = "Muestreo Ideal (xs)";
@@ -1121,7 +1283,7 @@
         this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
         this.addWidget("number", "Índice Mod μ", 0.8, v => { that.properties.mu = Number(v); dirtyPlots = true; }, { step: 0.1 });
         this.addWidget("number", "Amplitud Ac", 1, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { step: 0.2 });
-        this.size = [210, 135];
+        this.size = [250, 135];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorAM.title = "Modulador AM";
@@ -1149,7 +1311,7 @@
         this.addWidget("number", "Índice β", 5, v => { that.properties.beta = Number(v); dirtyPlots = true; }, { min: 0, step: 0.5 });
         this.addWidget("number", "Amplitud Ac", 1, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { step: 0.2 });
 
-        this.size = [220, 140];
+        this.size = [260, 140];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorFM.title = "Modulador FM";
@@ -1212,7 +1374,7 @@
         this.addWidget("number", "Sensibilidad kp (rad)", 1.5, v => { that.properties.kp = Number(v); dirtyPlots = true; }, { step: 0.2 });
         this.addWidget("number", "Amplitud Ac", 1.0, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { step: 0.2 });
 
-        this.size = [220, 140];
+        this.size = [275, 140];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorPM.title = "Modulador PM";
@@ -1237,6 +1399,58 @@
     LiteGraph.registerNodeType("Telecom/ModuladorPM", NodoModuladorPM);
 
 
+    // --- DETECTOR DE ENVOLVENTE ---
+    function NodoDetectorEnvolvente() {
+        this.addInput("s_AM", "signal");
+        this.addOutput("m_rec", "signal");
+        this.properties = { nombre: "m_rec(t)", tau: 0.04, removeDC: false };
+
+        const that = this;
+        this.addWidget("text", "Etiqueta", "m_rec(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
+        this.addWidget("number", "Tau RC (s)", 0.04, v => { that.properties.tau = Math.max(0.001, Number(v)); dirtyPlots = true; }, { min: 0.001, step: 0.005 });
+        this.addWidget("toggle", "Quitar DC", false, v => { that.properties.removeDC = Boolean(v); dirtyPlots = true; });
+
+        this.size = [250, 120];
+        applyLightStyle(this, "#fed7aa", "#ffffff");
+    }
+    NodoDetectorEnvolvente.title = "Detector de Envolvente";
+    NodoDetectorEnvolvente.prototype.onExecute = function() {
+        let in1 = this.getInputData(0);
+        if (!in1 || !in1.values) {
+            this.setOutputData(0, null);
+            return;
+        }
+
+        const { tau, removeDC, nombre } = this.properties;
+        const { dt } = getCurrentTimeVector();
+        const x = in1.values;
+        let env = new Array(N).fill(0);
+
+        const decay = Math.exp(-dt / Math.max(0.001, tau));
+        let vCap = 0;
+        for (let i = 0; i < N; i++) {
+            let vRect = Math.abs(x[i]);
+            if (vRect >= vCap) vCap = vRect;
+            else vCap *= decay;
+            env[i] = vCap;
+        }
+
+        if (removeDC) {
+            let mean = env.reduce((a, b) => a + b, 0) / N;
+            env = env.map(v => v - mean);
+        }
+
+        this.setOutputData(0, {
+            name: nombre || "m_rec",
+            values: env,
+            discrete: false,
+            isPeriodic: in1.isPeriodic,
+            dt: dt
+        });
+    };
+    LiteGraph.registerNodeType("Telecom/DetectorEnvolvente", NodoDetectorEnvolvente);
+
+
     // --- MODULADOR QAM (4-QAM / 16-QAM) ---
     function NodoModuladorQAM() {
         this.addInput("d(t)", "signal");
@@ -1245,7 +1459,7 @@
             nombre: "s_QAM(t)", 
             tipo: "4-QAM (QPSK)", 
             fc: 20, 
-            rb: 4, 
+            baudios: 2, 
             Ac: 1.0,
             bits: "11010010" 
         };
@@ -1256,10 +1470,11 @@
             values: ["4-QAM (QPSK)", "16-QAM"] 
         });
         this.addWidget("number", "Portadora fc (Hz)", 20, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
-        this.addWidget("number", "Tasa Rb (bps)", 4, v => { that.properties.rb = Math.max(0.1, Number(v)); dirtyPlots = true; }, { step: 0.5 });
+        this.addWidget("number", "Baudios (sym/s)", 2, v => { that.properties.baudios = Math.max(0.1, Number(v)); dirtyPlots = true; }, { step: 0.5 });
         this.addWidget("text", "Bits (fallback)", "11010010", v => { that.properties.bits = v; dirtyPlots = true; });
 
-        this.size = [230, 165];
+        this.modSymbols = [];
+        this.size = [275, 345];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorQAM.title = "Modulador QAM";
@@ -1271,9 +1486,9 @@
         if (bitStr.length === 0) bitStr = "1101";
 
         const { tipo, fc, Ac, nombre } = this.properties;
-        const rb = (in1 && in1.Rb) ? in1.Rb : Math.max(0.1, Number(this.properties.rb || 4));
+        const baudios = Math.max(0.1, Number(this.properties.baudios || 2));
+        const Ts = 1.0 / baudios; // Duración exacta de cada símbolo en segundos según los baudios
         const kBits = (tipo === "4-QAM (QPSK)") ? 2 : 4;
-        const Ts = kBits / rb;
         const { t, dt } = getCurrentTimeVector();
 
         const gray4 = {
@@ -1301,8 +1516,16 @@
             numSymbols = 1;
         }
 
-        let tStart = 0;
+        let tStart = (in1 && in1.t_start !== undefined) ? in1.t_start : 0;
         let tEnd = tStart + numSymbols * Ts;
+
+        let symList = [];
+        for (let m = 0; m < numSymbols; m++) {
+            let symBits = bitStr.substring(m * kBits, (m + 1) * kBits);
+            let [I, Q] = getIQ(symBits);
+            symList.push({ index: m + 1, bits: symBits, I: I, Q: Q });
+        }
+        this.modSymbols = symList;
 
         let values = t.map(time => {
             if (time < tStart || time >= tEnd) return 0;
@@ -1318,53 +1541,1133 @@
             values: values,
             discrete: false,
             isPeriodic: false,
+            qamMeta: {
+                fc: fc,
+                baudios: baudios,
+                Ac: Ac,
+                tipo: tipo,
+                tStart: tStart,
+                numSymbols: numSymbols,
+                Ts: Ts,
+                bitStr: bitStr
+            },
             dt: dt
         });
+    };
+
+    NodoModuladorQAM.prototype.onDrawForeground = function(ctx) {
+        if (this.flags.collapsed) return;
+        const w = this.size[0];
+        const startY = 175;
+        const plotSize = 155;
+        const cx = w / 2;
+        const cy = startY + plotSize / 2;
+        const radius = (plotSize - 26) / 2;
+
+        ctx.save();
+        // Fondo cuadrícula constelación
+        ctx.fillStyle = "#0f172a";
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect((w - plotSize) / 2, startY, plotSize, plotSize, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        // Ejes I y Q
+        ctx.strokeStyle = "#475569";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx - radius - 5, cy);
+        ctx.lineTo(cx + radius + 5, cy);
+        ctx.moveTo(cx, cy - radius - 5);
+        ctx.lineTo(cx, cy + radius + 5);
+        ctx.stroke();
+
+        // Etiquetas Ejes
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "9px 'Segoe UI', sans-serif";
+        ctx.fillText("I", cx + radius - 2, cy - 4);
+        ctx.fillText("Q", cx + 4, cy - radius + 8);
+
+        const is16 = this.properties.tipo === "16-QAM";
+        const maxNorm = is16 ? (3 / Math.sqrt(10)) : 1.0;
+
+        // Puntos ideales de la constelación de referencia
+        ctx.fillStyle = "rgba(148, 163, 184, 0.4)";
+        if (!is16) {
+            [-1, 1].forEach(xi => {
+                [-1, 1].forEach(yq => {
+                    let px = cx + (xi / maxNorm) * radius * 0.85;
+                    let py = cy - (yq / maxNorm) * radius * 0.85;
+                    ctx.beginPath();
+                    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            });
+        } else {
+            const vals16 = [-3, -1, 1, 3].map(v => v / Math.sqrt(10));
+            vals16.forEach(xi => {
+                vals16.forEach(yq => {
+                    let px = cx + (xi / maxNorm) * radius * 0.85;
+                    let py = cy - (yq / maxNorm) * radius * 0.85;
+                    ctx.beginPath();
+                    ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            });
+        }
+
+        // Dibujar símbolos transmitidos
+        const syms = this.modSymbols || [];
+        syms.forEach(s => {
+            let px = cx + (s.I / maxNorm) * radius * 0.85;
+            let py = cy - (s.Q / maxNorm) * radius * 0.85;
+
+            // Marcador
+            ctx.fillStyle = "#38bdf8";
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Etiqueta del símbolo
+            ctx.fillStyle = "#f8fafc";
+            ctx.font = "bold 8.5px 'Segoe UI', monospace";
+            ctx.fillText(`${s.bits}`, px + 6, py - 3);
+        });
+
+        ctx.restore();
     };
     LiteGraph.registerNodeType("Telecom/ModuladorQAM", NodoModuladorQAM);
 
 
-    // --- DETECTOR DE ENVOLVENTE ---
-    function NodoDetectorEnvolvente() {
-        this.addInput("s_AM", "signal");
-        this.addOutput("m_rec", "signal");
-        this.properties = { nombre: "m_rec(t)", tau: 0.04, removeDC: false };
+    // --- CANAL DE COMUNICACIÓN CON ATENUACIÓN Y RUIDO ---
+    function NodoCanal() {
+        this.addInput("In", "signal");
+        this.addOutput("Out", "signal");
+        this.properties = { 
+            nombre: "Canal",
+            atenuacion: 0.8,    // Factor de ganancia (0.0 a 2.0)
+            ruido: 0.15,        // Desviación estándar del ruido Gaussiano (sigma)
+            retardo: 0.0        // Retardo temporal en segundos
+        };
 
         const that = this;
-        this.addWidget("text", "Etiqueta", "m_rec(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "Tau RC (s)", 0.04, v => { that.properties.tau = Number(v); dirtyPlots = true; }, { step: 0.005 });
-        this.addWidget("toggle", "Quitar DC", false, v => { that.properties.removeDC = Boolean(v); dirtyPlots = true; });
+        this.addWidget("text", "Etiqueta", "Canal", v => { that.properties.nombre = v; dirtyPlots = true; });
+        this.addWidget("number", "Atenuación α", 0.8, v => { that.properties.atenuacion = Math.max(0, Number(v)); dirtyPlots = true; }, { min: 0, max: 2, step: 0.05 });
+        this.addWidget("number", "Ruido σ (AWGN)", 0.15, v => { that.properties.ruido = Math.max(0, Number(v)); dirtyPlots = true; }, { min: 0, step: 0.02 });
+        this.addWidget("number", "Retardo (s)", 0.0, v => { that.properties.retardo = Number(v); dirtyPlots = true; }, { step: 0.05 });
 
-        this.size = [220, 115];
+        this.size = [260, 140];
+        applyLightStyle(this, "#fdba74", "#ffffff");
+    }
+    NodoCanal.title = "Canal (Aten/Ruido)";
+
+    // Generador Box-Muller pseudoaleatorio de ruido blanco gaussiano reproducible por frame
+    function gaussianRandom(mean = 0, stdev = 1) {
+        let u1 = 1.0 - Math.random();
+        let u2 = 1.0 - Math.random();
+        let randStdNormal = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2);
+        return mean + stdev * randStdNormal;
+    }
+
+    NodoCanal.prototype.onExecute = function() {
+        let in1 = this.getInputData(0);
+        if (!in1 || !in1.values) {
+            this.setOutputData(0, null);
+            return;
+        }
+
+        const { atenuacion, ruido, retardo, nombre } = this.properties;
+        const alpha = Number(atenuacion !== undefined ? atenuacion : 1.0);
+        const sigma = Number(ruido !== undefined ? ruido : 0.0);
+        const tDelay = Number(retardo !== undefined ? retardo : 0.0);
+        const { t, dt, tMin, tMax } = getCurrentTimeVector();
+
+        const xIn = in1.values;
+        let outValues = new Array(N);
+
+        for (let i = 0; i < N; i++) {
+            let curTime = t[i];
+            let origTime = curTime - tDelay;
+            let val = 0;
+
+            if (in1.sourceNode && typeof in1.sourceNode.evalAt === "function") {
+                val = in1.sourceNode.evalAt(origTime, dt);
+            } else {
+                if (origTime >= tMin && origTime <= tMax) {
+                    let idx = (origTime - tMin) / dt;
+                    let i0 = Math.floor(idx);
+                    if (i0 >= 0 && i0 < N - 1) {
+                        let frac = idx - i0;
+                        val = xIn[i0] * (1 - frac) + xIn[i0 + 1] * frac;
+                    } else if (i0 === N - 1) {
+                        val = xIn[N - 1];
+                    }
+                }
+            }
+
+            // Aplicar ganancia/atenuación y suma de Ruido Blanco Gaussiano Aditivo (AWGN)
+            let noise = sigma > 0 ? gaussianRandom(0, sigma) : 0;
+            outValues[i] = alpha * val + noise;
+        }
+
+        // Propagar metadatos con escalado de amplitud y retardo
+        let updatedMeta = null;
+        if (in1.qamMeta) {
+            updatedMeta = { ...in1.qamMeta };
+            updatedMeta.Ac = (updatedMeta.Ac || 1.0) * alpha;
+            updatedMeta.tStart = (updatedMeta.tStart || 0.0) + tDelay;
+        }
+
+        this.setOutputData(0, {
+            name: nombre || "s_canal(t)",
+            sourceNode: this,
+            values: outValues,
+            discrete: in1.discrete || false,
+            isPeriodic: in1.isPeriodic,
+            qamMeta: updatedMeta,
+            dt: dt
+        });
+    };
+    LiteGraph.registerNodeType("Telecom/Canal", NodoCanal);
+
+
+    // --- DEMODULADOR QAM ---
+    function NodoDemoduladorQAM() {
+        this.addInput("s_QAM(t)", "signal");
+        this.addOutput("d_rec(t)", "signal");
+        this.properties = {
+            nombre: "d_rec(t)",
+            tipo: "4-QAM (QPSK)",
+            fc: 20,
+            baudios: 2,
+            t_start: 0.0,
+            num_sym: 4,
+            autoSync: true
+        };
+
+        const that = this;
+        this.wName = this.addWidget("text", "Etiqueta", "d_rec(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
+        this.wAuto = this.addWidget("toggle", "Auto-Sincronizar", true, v => { that.properties.autoSync = Boolean(v); dirtyPlots = true; });
+        this.wType = this.addWidget("combo", "Constelación", "4-QAM (QPSK)", v => { that.properties.tipo = v; dirtyPlots = true; }, {
+            values: ["4-QAM (QPSK)", "16-QAM"]
+        });
+        this.wFc = this.addWidget("number", "Portadora fc (Hz)", 20, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.wBaudios = this.addWidget("number", "Baudios (sym/s)", 2, v => { that.properties.baudios = Math.max(0.1, Number(v)); dirtyPlots = true; }, { step: 0.5 });
+        this.wTStart = this.addWidget("number", "Inicio t0 (s)", 0.0, v => { that.properties.t_start = Number(v); dirtyPlots = true; }, { step: 0.2 });
+        this.wNumSym = this.addWidget("number", "N.º Símbolos", 4, v => { that.properties.num_sym = Math.max(1, Math.round(Number(v))); dirtyPlots = true; }, { min: 1, step: 1 });
+
+        this.decodedSymbols = [];
+        this.size = [305, 475];
         applyLightStyle(this, "#fed7aa", "#ffffff");
     }
-    NodoDetectorEnvolvente.title = "Detector de Envolvente";
-    NodoDetectorEnvolvente.prototype.onExecute = function() {
+    NodoDemoduladorQAM.title = "Demodulador QAM";
+
+    // Propagar metadatos QAM a través de sumadores/amplificadores/canales si no estaban presentes
+    function findQamMetaInSignal(sig) {
+        if (!sig) return null;
+        if (sig.qamMeta) return sig.qamMeta;
+        if (sig.sourceNode && sig.sourceNode.inputs) {
+            for (let i = 0; i < sig.sourceNode.inputs.length; i++) {
+                let subSig = sig.sourceNode.getInputData(i);
+                let found = findQamMetaInSignal(subSig);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    NodoDemoduladorQAM.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
-        if (!in1) return;
+        if (!in1 || !in1.values) {
+            this.decodedSymbols = [];
+            this.setOutputData(0, null);
+            return;
+        }
 
-        const { tau, removeDC, nombre } = this.properties;
-        const { dt } = getCurrentTimeVector();
+        const meta = findQamMetaInSignal(in1);
+        if (this.properties.autoSync !== false && meta) {
+            this.properties.tipo = meta.tipo;
+            this.properties.fc = meta.fc;
+            this.properties.baudios = meta.baudios;
+            this.properties.t_start = meta.tStart;
+            this.properties.num_sym = meta.numSymbols;
+
+            if (this.wType) this.wType.value = meta.tipo;
+            if (this.wFc) this.wFc.value = meta.fc;
+            if (this.wBaudios) this.wBaudios.value = meta.baudios;
+            if (this.wTStart) this.wTStart.value = meta.tStart;
+            if (this.wNumSym) this.wNumSym.value = meta.numSymbols;
+        }
+
+        const { tipo, fc, baudios, t_start, num_sym, nombre } = this.properties;
+        const kBits = (tipo === "4-QAM (QPSK)") ? 2 : 4;
+        const baudios_val = Math.max(0.1, Number(baudios || 2));
+        const Ts = 1.0 / baudios_val;
+        const { t, dt, tMin, tMax } = getCurrentTimeVector();
         const x = in1.values;
-        let env = new Array(N).fill(0);
 
-        const decay = Math.exp(-dt / Math.max(0.001, tau));
-        let vCap = 0;
-        for (let i = 0; i < N; i++) {
-            let vRect = Math.abs(x[i]);
-            if (vRect >= vCap) vCap = vRect;
-            else vCap *= decay;
-            env[i] = vCap;
+        let tStart = Number(t_start || 0);
+        let totalSyms = Math.max(1, Math.round(Number(num_sym || 4)));
+        const Ac_ref = (meta && meta.Ac) ? meta.Ac : 1.0;
+
+        const const4 = [
+            { bits: "00", I: -1, Q: -1 },
+            { bits: "01", I: -1, Q:  1 },
+            { bits: "11", I:  1, Q:  1 },
+            { bits: "10", I:  1, Q: -1 }
+        ];
+
+        const levels16 = [
+            { b: "00", v: -3 / Math.sqrt(10) },
+            { b: "01", v: -1 / Math.sqrt(10) },
+            { b: "11", v:  1 / Math.sqrt(10) },
+            { b: "10", v:  3 / Math.sqrt(10) }
+        ];
+        const const16 = [];
+        for (let li of levels16) {
+            for (let lq of levels16) {
+                const16.push({ bits: li.b + lq.b, I: li.v, Q: lq.v });
+            }
+        }
+        const activeConstellation = (kBits === 2) ? const4 : const16;
+
+        function sampleReceivedAt(timeVal) {
+            if (in1.sourceNode && typeof in1.sourceNode.evalAt === "function") {
+                return in1.sourceNode.evalAt(timeVal, dt);
+            }
+            if (timeVal < tMin || timeVal > tMax) return 0;
+            let idx = (timeVal - tMin) / dt;
+            let i0 = Math.floor(idx);
+            if (i0 < 0) return x[0];
+            if (i0 >= N - 1) return x[N - 1];
+            let frac = idx - i0;
+            return x[i0] * (1 - frac) + x[i0 + 1] * frac;
         }
 
-        if (removeDC) {
-            let mean = env.reduce((a, b) => a + b, 0) / N;
-            env = env.map(v => v - mean);
+        let symbolsList = [];
+        let recoveredBits = "";
+
+        for (let m = 0; m < totalSyms; m++) {
+            let symT0 = tStart + m * Ts;
+            let symT1 = symT0 + Ts;
+
+            let Scc = 0, Sss = 0, Scs = 0;
+            let Sxc = 0, Sxs = 0;
+            let Sxc1 = 0, Sxs1 = 0, Scc1 = 0, Sss1 = 0;
+            let Sxc2 = 0, Sxs2 = 0, Scc2 = 0, Sss2 = 0;
+            let symMid = (symT0 + symT1) / 2;
+
+            let count = 0;
+            for (let i = 0; i < N; i++) {
+                let ti = t[i];
+                if (ti >= symT0 + dt * 0.25 && ti <= symT1 - dt * 0.25) {
+                    let val = x[i];
+                    let c = Math.cos(2 * Math.PI * fc * ti);
+                    let s = -Math.sin(2 * Math.PI * fc * ti);
+
+                    Scc += c * c;
+                    Sss += s * s;
+                    Scs += c * s;
+                    Sxc += val * c;
+                    Sxs += val * s;
+
+                    if (ti < symMid) {
+                        Sxc1 += val * c; Sxs1 += val * s;
+                        Scc1 += c * c;   Sss1 += s * s;
+                    } else {
+                        Sxc2 += val * c; Sxs2 += val * s;
+                        Scc2 += c * c;   Sss2 += s * s;
+                    }
+                    count++;
+                }
+            }
+
+            if (count < 8) {
+                const M_SUB = 64;
+                const dSub = Ts / M_SUB;
+                for (let k = 1; k < M_SUB; k++) {
+                    let ti = symT0 + k * dSub;
+                    let val = sampleReceivedAt(ti);
+                    let c = Math.cos(2 * Math.PI * fc * ti);
+                    let s = -Math.sin(2 * Math.PI * fc * ti);
+                    Scc += c * c;
+                    Sss += s * s;
+                    Scs += c * s;
+                    Sxc += val * c;
+                    Sxs += val * s;
+                    count++;
+                }
+            }
+
+            if (count === 0) continue;
+
+            let det = Scc * Sss - Scs * Scs;
+            let I_est = 0, Q_est = 0;
+            if (Math.abs(det) > 1e-9) {
+                I_est = ((Sss * Sxc - Scs * Sxs) / det) / Ac_ref;
+                Q_est = ((Scc * Sxs - Scs * Sxc) / det) / Ac_ref;
+            } else {
+                I_est = (Scc > 1e-9 ? (Sxc / Scc) : 0) / Ac_ref;
+                Q_est = (Sss > 1e-9 ? (Sxs / Sss) : 0) / Ac_ref;
+            }
+
+            let phaseRad = Math.atan2(Q_est, I_est);
+            let phaseDeg = phaseRad * (180 / Math.PI);
+
+            let fEst = fc;
+            if (Scc1 > 1e-6 && Sss1 > 1e-6 && Scc2 > 1e-6 && Sss2 > 1e-6) {
+                let I1 = Sxc1 / Scc1, Q1 = Sxs1 / Sss1;
+                let I2 = Sxc2 / Scc2, Q2 = Sxs2 / Sss2;
+                if (Math.hypot(I1, Q1) > 1e-3 && Math.hypot(I2, Q2) > 1e-3) {
+                    let ph1 = Math.atan2(Q1, I1);
+                    let ph2 = Math.atan2(Q2, I2);
+                    let dPhi = ph2 - ph1;
+                    while (dPhi > Math.PI) dPhi -= 2 * Math.PI;
+                    while (dPhi < -Math.PI) dPhi += 2 * Math.PI;
+                    let df = dPhi / (2 * Math.PI * (Ts / 2));
+                    if (Math.abs(df) < 0.15) df = 0;
+                    fEst = fc + df;
+                }
+            }
+
+            let bestSym = activeConstellation[0];
+            let minDistSq = Infinity;
+            for (let pt of activeConstellation) {
+                let dI = I_est - pt.I;
+                let dQ = Q_est - pt.Q;
+                let distSq = dI * dI + dQ * dQ;
+                if (distSq < minDistSq) {
+                    minDistSq = distSq;
+                    bestSym = pt;
+                }
+            }
+
+            let symBits = bestSym.bits;
+            recoveredBits += symBits;
+
+            symbolsList.push({
+                index: m + 1,
+                bits: symBits,
+                freq: fEst,
+                phaseDeg: phaseDeg,
+                I: I_est,
+                Q: Q_est
+            });
         }
 
-        this.setOutputData(0, { name: nombre || "m_rec", values: env, discrete: false, dt: dt });
+        this.decodedSymbols = symbolsList;
+
+        const Tb = Ts / kBits;
+        const numBits = recoveredBits.length;
+        const tEnd = tStart + numBits * Tb;
+
+        let outValues = t.map(time => {
+            if (time < tStart || time >= tEnd || numBits === 0) return 0;
+            let bIdx = Math.floor((time - tStart) / Tb);
+            if (bIdx >= numBits) bIdx = numBits - 1;
+            return recoveredBits[bIdx] === "1" ? 1.0 : 0.0;
+        });
+
+        const neededHeight = 350 + Math.max(1, symbolsList.length) * 16;
+        if (this.size[1] !== neededHeight) {
+            this.size[1] = neededHeight;
+            this.setDirtyCanvas(true, true);
+        }
+
+        this.setOutputData(0, {
+            name: nombre || "d_rec(t)",
+            rawBits: recoveredBits,
+            values: outValues,
+            discrete: false,
+            isPeriodic: false,
+            baudios: baudios_val,
+            Tb: Tb,
+            t_start: tStart,
+            qamSymbols: symbolsList,
+            dt: dt
+        });
     };
-    LiteGraph.registerNodeType("Telecom/DetectorEnvolvente", NodoDetectorEnvolvente);
+
+    NodoDemoduladorQAM.prototype.onDrawForeground = function(ctx) {
+        if (this.flags.collapsed) return;
+        const syms = this.decodedSymbols || [];
+        const w = this.size[0];
+        
+        // 1. Constelación I-Q gráfica
+        const plotY = 195;
+        const plotSize = 145;
+        const cx = w / 2;
+        const cy = plotY + plotSize / 2;
+        const radius = (plotSize - 24) / 2;
+
+        ctx.save();
+        ctx.fillStyle = "#0f172a";
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect((w - plotSize) / 2, plotY, plotSize, plotSize, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        // Ejes
+        ctx.strokeStyle = "#475569";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx - radius - 5, cy);
+        ctx.lineTo(cx + radius + 5, cy);
+        ctx.moveTo(cx, cy - radius - 5);
+        ctx.lineTo(cx, cy + radius + 5);
+        ctx.stroke();
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "9px 'Segoe UI', sans-serif";
+        ctx.fillText("I", cx + radius - 2, cy - 4);
+        ctx.fillText("Q", cx + 4, cy - radius + 8);
+
+        const is16 = this.properties.tipo === "16-QAM";
+        const maxNorm = is16 ? (3 / Math.sqrt(10)) : 1.0;
+
+        // Puntos ideales
+        ctx.fillStyle = "rgba(148, 163, 184, 0.4)";
+        if (!is16) {
+            [-1, 1].forEach(xi => {
+                [-1, 1].forEach(yq => {
+                    let px = cx + (xi / maxNorm) * radius * 0.82;
+                    let py = cy - (yq / maxNorm) * radius * 0.82;
+                    ctx.beginPath();
+                    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            });
+        } else {
+            const vals16 = [-3, -1, 1, 3].map(v => v / Math.sqrt(10));
+            vals16.forEach(xi => {
+                vals16.forEach(yq => {
+                    let px = cx + (xi / maxNorm) * radius * 0.82;
+                    let py = cy - (yq / maxNorm) * radius * 0.82;
+                    ctx.beginPath();
+                    ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            });
+        }
+
+        // Puntos y nubes de símbolos detectados en la constelación
+        syms.forEach(s => {
+            let px = cx + (s.I / maxNorm) * radius * 0.82;
+            let py = cy - (s.Q / maxNorm) * radius * 0.82;
+
+            ctx.fillStyle = "#f97316";
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(px, py, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#f8fafc";
+            ctx.font = "bold 8.5px 'Segoe UI', monospace";
+            ctx.fillText(`${s.bits}`, px + 5, py - 3);
+        });
+
+        // 2. Tabla de información de frecuencia y fase de cada símbolo
+        const tableY = plotY + plotSize + 10;
+        ctx.fillStyle = "#0f172a";
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const tableH = Math.max(30, syms.length * 16 + 22);
+        ctx.roundRect(10, tableY, w - 20, tableH, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#38bdf8";
+        ctx.font = "bold 9px 'Segoe UI', monospace";
+        ctx.fillText("Sym  Bits   f(Hz)      Fase(°)", 16, tableY + 14);
+
+        ctx.strokeStyle = "#1e293b";
+        ctx.beginPath();
+        ctx.moveTo(10, tableY + 18);
+        ctx.lineTo(w - 10, tableY + 18);
+        ctx.stroke();
+
+        ctx.font = "9px 'Segoe UI', monospace";
+        syms.forEach((s, idx) => {
+            let rowY = tableY + 32 + idx * 16;
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillText(`#${s.index}`, 16, rowY);
+
+            ctx.fillStyle = "#f8fafc";
+            ctx.fillText(`${s.bits}`, 46, rowY);
+
+            ctx.fillStyle = "#38bdf8";
+            ctx.fillText(`${s.freq.toFixed(1)}`, 85, rowY);
+
+            ctx.fillStyle = "#cbd5e1";
+            ctx.fillText(`${s.phaseDeg >= 0 ? "+" : ""}${s.phaseDeg.toFixed(1)}°`, 142, rowY);
+        });
+
+        ctx.restore();
+    };
+    LiteGraph.registerNodeType("Telecom/DemoduladorQAM", NodoDemoduladorQAM);
+
+    // --- MEDIDOR DE BER (BIT ERROR RATE) ---
+    function NodoMedidorBER() {
+        this.addInput("Tx (Original)", "signal");
+        this.addInput("Rx (Recibida)", "signal");
+        this.addOutput("BER", "number");
+        this.properties = {
+            nombre: "Medidor BER",
+            autoAlinear: true,
+            umbralDecision: 0.5,
+            acumular: true
+        };
+
+        const that = this;
+        this.addWidget("text", "Etiqueta", "Medidor BER", v => { that.properties.nombre = v; dirtyPlots = true; });
+        this.addWidget("toggle", "Auto-Alinear Retardo", true, v => { that.properties.autoAlinear = Boolean(v); });
+        this.addWidget("toggle", "Acumular Errores", true, v => { that.properties.acumular = Boolean(v); });
+        this.addWidget("button", "Reiniciar Contador", null, () => { that.resetStats(); });
+
+        this.size = [290, 240];
+        this.resetStats();
+        applyLightStyle(this, "#fecaca", "#ffffff");
+    }
+    NodoMedidorBER.title = "Medidor de BER";
+
+    NodoMedidorBER.prototype.resetStats = function() {
+        this.stats = {
+            totalBits: 0,
+            totalErrors: 0,
+            cumulativeBER: 0,
+            instantBER: 0,
+            detectedDelayBits: 0,
+            lastTxBits: "",
+            lastRxBits: "",
+            ebN0_est: null
+        };
+        this.setDirtyCanvas(true, true);
+    };
+
+    // Extrae o infiere los bits de una señal (desde cadena directa, metadatos QAM o muestreo en el tiempo)
+    function extractBitstreamFromSignal(sig, umbral = 0.5) {
+        if (!sig) return "";
+        if (sig.rawBits && typeof sig.rawBits === "string" && sig.rawBits.length > 0) {
+            return sig.rawBits;
+        }
+        if (sig.qamMeta && sig.qamMeta.bitStr) {
+            return sig.qamMeta.bitStr;
+        }
+        if (sig.values && sig.values.length > 0) {
+            const Tb = sig.Tb || (sig.Rb ? 1.0 / sig.Rb : 0.5);
+            const tStart = sig.t_start !== undefined ? sig.t_start : 0;
+            const { t } = getCurrentTimeVector();
+            const N_samples = sig.values.length;
+
+            let bits = "";
+            let tTotal = t[N_samples - 1] - tStart;
+            let estBits = Math.floor(tTotal / Tb);
+            if (estBits <= 0) estBits = 8;
+            estBits = Math.min(128, estBits);
+
+            for (let b = 0; b < estBits; b++) {
+                let sampleTime = tStart + (b + 0.5) * Tb;
+                let val = 0;
+                let idx = Math.round((sampleTime - t[0]) / (t[1] - t[0]));
+                if (idx >= 0 && idx < N_samples) {
+                    val = sig.values[idx];
+                }
+                bits += (val >= umbral) ? "1" : "0";
+            }
+            return bits;
+        }
+        return "";
+    }
+
+    NodoMedidorBER.prototype.onExecute = function() {
+        let inTx = this.getInputData(0);
+        let inRx = this.getInputData(1);
+
+        if (!inTx || !inRx) {
+            this.setOutputData(0, this.stats ? this.stats.cumulativeBER : 0);
+            return;
+        }
+
+        let bitsTx = extractBitstreamFromSignal(inTx, this.properties.umbralDecision);
+        let bitsRx = extractBitstreamFromSignal(inRx, this.properties.umbralDecision);
+
+        if (!bitsTx || !bitsRx || bitsTx.length === 0 || bitsRx.length === 0) {
+            this.setOutputData(0, this.stats ? this.stats.cumulativeBER : 0);
+            return;
+        }
+
+        // Auto-alineación de retardo temporal/desfase si está activado
+        let bestShift = 0;
+        let minMismatch = Infinity;
+        const maxShift = this.properties.autoAlinear ? Math.min(16, Math.floor(bitsTx.length / 2)) : 0;
+
+        for (let s = -maxShift; s <= maxShift; s++) {
+            let mismatches = 0;
+            let compared = 0;
+            for (let i = 0; i < bitsTx.length; i++) {
+                let rxIdx = i + s;
+                if (rxIdx >= 0 && rxIdx < bitsRx.length) {
+                    if (bitsTx[i] !== bitsRx[rxIdx]) mismatches++;
+                    compared++;
+                }
+            }
+            if (compared >= 4 && mismatches < minMismatch) {
+                minMismatch = mismatches;
+                bestShift = s;
+            }
+        }
+
+        let frameErrors = 0;
+        let frameBits = 0;
+        let alignedRx = "";
+        let alignedTx = "";
+
+        for (let i = 0; i < bitsTx.length; i++) {
+            let rxIdx = i + bestShift;
+            if (rxIdx >= 0 && rxIdx < bitsRx.length) {
+                let tBit = bitsTx[i];
+                let rBit = bitsRx[rxIdx];
+                alignedTx += tBit;
+                alignedRx += rBit;
+                if (tBit !== rBit) frameErrors++;
+                frameBits++;
+            }
+        }
+
+        if (frameBits > 0) {
+            let instBER = frameErrors / frameBits;
+            this.stats.instantBER = instBER;
+            this.stats.detectedDelayBits = bestShift;
+            this.stats.lastTxBits = alignedTx;
+            this.stats.lastRxBits = alignedRx;
+
+            if (this.properties.acumular) {
+                this.stats.totalBits += frameBits;
+                this.stats.totalErrors += frameErrors;
+                this.stats.cumulativeBER = this.stats.totalBits > 0 
+                    ? (this.stats.totalErrors / this.stats.totalBits) 
+                    : 0;
+            } else {
+                this.stats.totalBits = frameBits;
+                this.stats.totalErrors = frameErrors;
+                this.stats.cumulativeBER = instBER;
+            }
+        }
+
+        this.setOutputData(0, this.stats.cumulativeBER);
+    };
+
+    NodoMedidorBER.prototype.onDrawForeground = function(ctx) {
+        if (this.flags.collapsed) return;
+        const w = this.size[0];
+        const startY = 115;
+        const boxW = w - 20;
+        const boxH = 115;
+        const boxX = 10;
+
+        ctx.save();
+        // Tarjeta de resultados
+        ctx.fillStyle = "#0f172a";
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(boxX, startY, boxW, boxH, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        const st = this.stats || { totalBits: 0, totalErrors: 0, cumulativeBER: 0, instantBER: 0, detectedDelayBits: 0 };
+
+        ctx.font = "bold 10px 'Segoe UI', monospace";
+        ctx.fillStyle = "#38bdf8";
+        ctx.fillText("ANÁLISIS DE ERROR DE BIT (BER)", boxX + 10, startY + 16);
+
+        ctx.strokeStyle = "#1e293b";
+        ctx.beginPath();
+        ctx.moveTo(boxX, startY + 22);
+        ctx.lineTo(boxX + boxW, startY + 22);
+        ctx.stroke();
+
+        ctx.font = "9.5px 'Segoe UI', monospace";
+
+        // Tasa BER acumulada destacada
+        let berColor = st.cumulativeBER === 0 ? "#4ade80" : (st.cumulativeBER < 1e-2 ? "#facc15" : "#f87171");
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText("BER Acumulado :", boxX + 10, startY + 38);
+        ctx.fillStyle = berColor;
+        ctx.font = "bold 10.5px 'Segoe UI', monospace";
+        let berStr = st.totalBits > 0 
+            ? `${st.cumulativeBER.toExponential(2)} (${(st.cumulativeBER * 100).toFixed(2)}%)` 
+            : "0.00e+0 (0.00%)";
+        ctx.fillText(berStr, boxX + 115, startY + 38);
+
+        // BER Instantáneo y bits evaluados
+        ctx.font = "9.5px 'Segoe UI', monospace";
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText("BER Instantáneo:", boxX + 10, startY + 54);
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillText(st.instantBER.toExponential(2), boxX + 115, startY + 54);
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText("Bits Tx / Err  :", boxX + 10, startY + 70);
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillText(`${st.totalBits} bits / ${st.totalErrors} err`, boxX + 115, startY + 70);
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText("Retardo Alin.  :", boxX + 10, startY + 86);
+        ctx.fillStyle = "#cbd5e1";
+        ctx.fillText(`${st.detectedDelayBits >= 0 ? "+" : ""}${st.detectedDelayBits} bits`, boxX + 115, startY + 86);
+
+        // Visualización de comparación de los últimos bits recibidos
+        if (st.lastTxBits && st.lastRxBits) {
+            ctx.fillStyle = "#64748b";
+            ctx.fillText("Tx:", boxX + 10, startY + 104);
+            ctx.fillText("Rx:", boxX + 100, startY + 104);
+
+            let maxChars = 8;
+            let subTx = st.lastTxBits.slice(0, maxChars);
+            let subRx = st.lastRxBits.slice(0, maxChars);
+
+            for (let i = 0; i < subTx.length; i++) {
+                let ok = subTx[i] === subRx[i];
+                ctx.fillStyle = ok ? "#22c55e" : "#ef4444";
+                ctx.fillText(subTx[i], boxX + 30 + i * 8, startY + 104);
+                ctx.fillText(subRx[i], boxX + 120 + i * 8, startY + 104);
+            }
+        }
+
+        ctx.restore();
+    };
+    LiteGraph.registerNodeType("Telecom/MedidorBER", NodoMedidorBER);
+
+    // --- OSCILOSCOPIO DE DIAGRAMA DE OJO ---
+    function NodoOsciloscopioOjo() {
+        this.addInput("d(t)", "signal");
+        this.properties = {
+            nombre: "Diag. Ojo " + (oscCounter++),
+            tb: 0.5,
+            autoTb: true,
+            t_offset: 0.0,
+            num_traces: 24,
+            samples_per_trace: 160
+        };
+
+        const that = this;
+        this.addWidget("text", "ID", this.properties.nombre, v => {
+            that.properties.nombre = v;
+            that.title = "👁️ " + v;
+            syncOscSelector();
+            dirtyPlots = true;
+        });
+        this.addWidget("toggle", "Auto Tb/Ts", true, v => { that.properties.autoTb = Boolean(v); dirtyPlots = true; });
+        this.wTb = this.addWidget("number", "Periodo Tb (s)", 0.5, v => { that.properties.tb = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.01, step: 0.05 });
+        this.addWidget("number", "Offset t0 (s)", 0.0, v => { that.properties.t_offset = Number(v); dirtyPlots = true; }, { step: 0.05 });
+        this.addWidget("number", "Trazas máx", 24, v => { that.properties.num_traces = Math.max(4, Math.min(100, Math.round(Number(v)))); dirtyPlots = true; }, { min: 4, max: 100, step: 2 });
+
+        this.title = "👁️ " + this.properties.nombre;
+        this.size = [285, 335];
+        this.eyeMetrics = null;
+        applyLightStyle(this, "#e9d5ff", "#ffffff");
+    }
+    NodoOsciloscopioOjo.title = "Osciloscopio Ojo";
+
+    NodoOsciloscopioOjo.prototype.onAdded = function() {
+        activeOscilloscopes.set(this.id, this);
+        syncOscSelector(this.id);
+    };
+
+    NodoOsciloscopioOjo.prototype.onRemoved = function() {
+        activeOscilloscopes.delete(this.id);
+        syncOscSelector();
+    };
+
+    NodoOsciloscopioOjo.prototype.onExecute = function() {
+        this.lastSignal = this.getInputData(0);
+        const sig = this.lastSignal;
+
+        if (sig && this.properties.autoTb) {
+            let detectedTb = null;
+            if (sig.Tb) detectedTb = sig.Tb;
+            else if (sig.Rb) detectedTb = 1.0 / sig.Rb;
+            else if (sig.baudios) detectedTb = 1.0 / sig.baudios;
+            else if (sig.qamMeta && sig.qamMeta.Ts) detectedTb = sig.qamMeta.Ts;
+
+            if (detectedTb && Math.abs(this.properties.tb - detectedTb) > 1e-4) {
+                this.properties.tb = detectedTb;
+                if (this.wTb) this.wTb.value = detectedTb;
+            }
+        }
+
+        // Cálculo de alta densidad de muestras y métricas de telecomunicaciones
+        if (sig && sig.values && sig.values.length > 0) {
+            this.computeEyeMetrics(sig);
+        } else {
+            this.eyeMetrics = null;
+            this._avgMetrics = null;
+        }
+
+        if (!activeOscilloscopes.has(this.id)) {
+            activeOscilloscopes.set(this.id, this);
+            syncOscSelector(this.id);
+        }
+    };
+
+    NodoOsciloscopioOjo.prototype.computeEyeMetrics = function(sig) {
+        const { dt, tMin, tMax } = getCurrentTimeVector();
+        const Tb = Math.max(0.005, Number(this.properties.tb || 0.5));
+        const T_span = 2 * Tb;
+        const tStart = sig.t_start !== undefined ? sig.t_start : 0;
+        const tOffset = Number(this.properties.t_offset || 0);
+        const tBase = tStart + tOffset;
+
+        function evalSignal(timeVal) {
+            if (sig.sourceNode && typeof sig.sourceNode.evalAt === "function") {
+                return sig.sourceNode.evalAt(timeVal, dt);
+            }
+            if (timeVal < tMin || timeVal > tMax) return 0;
+            let idx = (timeVal - tMin) / dt;
+            let i0 = Math.floor(idx);
+            if (i0 < 0) return sig.values[0];
+            if (i0 >= N - 1) return sig.values[N - 1];
+            let frac = idx - i0;
+            return sig.values[i0] * (1 - frac) + sig.values[i0 + 1] * frac;
+        }
+
+        const maxIntervals = Math.max(4, Math.round(Number(this.properties.num_traces || 24)));
+        const samplesPerTrace = Math.max(80, Math.round(Number(this.properties.samples_per_trace || 160)));
+        const dtSub = T_span / (samplesPerTrace - 1);
+
+        let eyeTracesData = [];
+        let midLevelsHigh = [];
+        let midLevelsLow = [];
+        let zeroCrossingOffsets = [];
+
+        for (let k = 0; k < maxIntervals; k++) {
+            let startK = tBase + k * Tb;
+            if (startK > tMax || startK + T_span < tMin) continue;
+
+            let traceVals = new Float32Array(samplesPerTrace);
+            let prevV = null;
+            let prevT = null;
+
+            for (let s = 0; s < samplesPerTrace; s++) {
+                let tau = s * dtSub;
+                let curT = startK + tau;
+                let v = evalSignal(curT);
+                traceVals[s] = v;
+
+                // Detección de cruce por cero (umbral central) de alta resolución
+                if (prevV !== null && prevV * v <= 0 && prevV !== v) {
+                    let frac = Math.abs(prevV) / (Math.abs(prevV) + Math.abs(v));
+                    let exactCrossTau = prevT + frac * dtSub;
+                    // Los cruces ocurren idealmente cerca de tau = 0, tau = Tb o tau = 2*Tb
+                    let distToTb = Math.abs(exactCrossTau - Tb);
+                    let distToEdge = Math.min(exactCrossTau, Math.abs(exactCrossTau - T_span));
+                    if (distToTb < Tb * 0.45) {
+                        zeroCrossingOffsets.push(exactCrossTau - Tb);
+                    } else if (distToEdge < Tb * 0.45) {
+                        zeroCrossingOffsets.push(exactCrossTau < Tb ? exactCrossTau : exactCrossTau - T_span);
+                    }
+                }
+                prevV = v;
+                prevT = tau;
+            }
+
+            // Muestra en el centro del ojo (instante óptimo de decisión tau = Tb)
+            let midIndex = Math.floor(samplesPerTrace / 2);
+            let vDecision = traceVals[midIndex];
+            if (vDecision >= 0) midLevelsHigh.push(vDecision);
+            else midLevelsLow.push(vDecision);
+
+            eyeTracesData.push(traceVals);
+        }
+
+        // Estadísticas instantáneas de Apertura Vertical y Margen de Ruido
+        let v1_mean = 0, v0_mean = 0;
+        let v1_min = 0, v0_max = 0;
+        let std1 = 0, std0 = 0;
+
+        if (midLevelsHigh.length > 0) {
+            v1_mean = midLevelsHigh.reduce((a, b) => a + b, 0) / midLevelsHigh.length;
+            v1_min = Math.min(...midLevelsHigh);
+            let var1 = midLevelsHigh.reduce((acc, x) => acc + Math.pow(x - v1_mean, 2), 0) / midLevelsHigh.length;
+            std1 = Math.sqrt(var1);
+        }
+        if (midLevelsLow.length > 0) {
+            v0_mean = midLevelsLow.reduce((a, b) => a + b, 0) / midLevelsLow.length;
+            v0_max = Math.max(...midLevelsLow);
+            let var0 = midLevelsLow.reduce((acc, x) => acc + Math.pow(x - v0_mean, 2), 0) / midLevelsLow.length;
+            std0 = Math.sqrt(var0);
+        }
+
+        let instAperturaV = (midLevelsHigh.length > 0 && midLevelsLow.length > 0) 
+            ? Math.max(0, v1_min - v0_max) 
+            : 0;
+
+        let instAlturaMedia = (midLevelsHigh.length > 0 && midLevelsLow.length > 0)
+            ? (v1_mean - v0_mean)
+            : 0;
+
+        let instQFactor = (std1 + std0 > 1e-4) ? (instAlturaMedia / (std1 + std0)) : 99.9;
+
+        // Jitter pico a pico (P-P) y RMS a partir de los cruces por cero
+        let instJitterRMS = 0;
+        let instJitterPP = 0;
+        if (zeroCrossingOffsets.length >= 2) {
+            let meanCross = zeroCrossingOffsets.reduce((a, b) => a + b, 0) / zeroCrossingOffsets.length;
+            let varCross = zeroCrossingOffsets.reduce((acc, x) => acc + Math.pow(x - meanCross, 2), 0) / zeroCrossingOffsets.length;
+            instJitterRMS = Math.sqrt(varCross);
+            let minC = Math.min(...zeroCrossingOffsets);
+            let maxC = Math.max(...zeroCrossingOffsets);
+            instJitterPP = maxC - minC;
+        }
+
+        let instAnchoOjo = Math.max(0, Tb - instJitterPP);
+
+        // --- Filtro de promedio móvil exponencial (EMA) para estabilizar métricas ---
+        if (!this._avgMetrics || this._avgMetrics.Tb !== Tb) {
+            this._avgMetrics = {
+                Tb: Tb,
+                aperturaV: instAperturaV,
+                alturaMedia: instAlturaMedia,
+                anchoOjo: instAnchoOjo,
+                jitterRMS: instJitterRMS,
+                jitterPP: instJitterPP,
+                qFactor: instQFactor,
+                samplesCount: 1
+            };
+        } else {
+            // Factor de suavizado α (ajustado para respuesta suave ante el ruido del canal)
+            const alpha = 0.12;
+            this._avgMetrics.aperturaV = (1 - alpha) * this._avgMetrics.aperturaV + alpha * instAperturaV;
+            this._avgMetrics.alturaMedia = (1 - alpha) * this._avgMetrics.alturaMedia + alpha * instAlturaMedia;
+            this._avgMetrics.anchoOjo = (1 - alpha) * this._avgMetrics.anchoOjo + alpha * instAnchoOjo;
+            this._avgMetrics.jitterRMS = (1 - alpha) * this._avgMetrics.jitterRMS + alpha * instJitterRMS;
+            this._avgMetrics.jitterPP = (1 - alpha) * this._avgMetrics.jitterPP + alpha * instJitterPP;
+            this._avgMetrics.qFactor = (1 - alpha) * this._avgMetrics.qFactor + alpha * instQFactor;
+            this._avgMetrics.samplesCount++;
+        }
+
+        this.eyeMetrics = {
+            Tb: Tb,
+            T_span: T_span,
+            aperturaV: this._avgMetrics.aperturaV,
+            alturaMedia: this._avgMetrics.alturaMedia,
+            anchoOjo: this._avgMetrics.anchoOjo,
+            jitterRMS: this._avgMetrics.jitterRMS,
+            jitterPP: this._avgMetrics.jitterPP,
+            qFactor: this._avgMetrics.qFactor,
+            tracesCount: eyeTracesData.length,
+            eyeTracesData: eyeTracesData,
+            samplesPerTrace: samplesPerTrace
+        };
+    };
+
+    NodoOsciloscopioOjo.prototype.onDrawForeground = function(ctx) {
+        if (this.flags.collapsed) return;
+        const w = this.size[0];
+        const startY = 160;
+        const miniPlotH = 80;
+        const miniPlotW = w - 24;
+        const plotX = 12;
+
+        ctx.save();
+        // Mini display gráfico del ojo dentro del bloque
+        ctx.fillStyle = "#020617";
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(plotX, startY, miniPlotW, miniPlotH, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        // Ejes y retícula interna
+        ctx.strokeStyle = "#1e293b";
+        ctx.beginPath();
+        ctx.moveTo(plotX, startY + miniPlotH / 2);
+        ctx.lineTo(plotX + miniPlotW, startY + miniPlotH / 2);
+        ctx.moveTo(plotX + miniPlotW / 2, startY);
+        ctx.lineTo(plotX + miniPlotW / 2, startY + miniPlotH);
+        ctx.stroke();
+
+        const m = this.eyeMetrics;
+        if (m && m.eyeTracesData && m.eyeTracesData.length > 0) {
+            // Escala de amplitud
+            let maxVal = 1.0;
+            for (let tr of m.eyeTracesData) {
+                for (let i = 0; i < tr.length; i++) {
+                    let a = Math.abs(tr[i]);
+                    if (a > maxVal) maxVal = a;
+                }
+            }
+            maxVal = Math.max(0.2, maxVal * 1.15);
+
+            ctx.lineWidth = 1.2;
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+            const S = m.samplesPerTrace;
+
+            for (let tr of m.eyeTracesData) {
+                ctx.beginPath();
+                for (let s = 0; s < S; s++) {
+                    let px = plotX + (s / (S - 1)) * miniPlotW;
+                    let py = startY + (miniPlotH / 2) - (tr[s] / maxVal) * (miniPlotH * 0.42);
+                    if (s === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+            }
+        }
+
+        // Panel de Métricas detalladas
+        const statsY = startY + miniPlotH + 8;
+        const statsH = 75;
+        ctx.fillStyle = "#0f172a";
+        ctx.strokeStyle = "#334155";
+        ctx.beginPath();
+        ctx.roundRect(plotX, statsY, miniPlotW, statsH, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = "9.5px 'Segoe UI', monospace";
+        if (!m || m.tracesCount === 0) {
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillText("Conecta una señal digital", plotX + 10, statsY + 28);
+            ctx.fillText("para construir el diagrama de ojo.", plotX + 10, statsY + 44);
+        } else {
+            // Columna 1 (Valores Promediados)
+            ctx.fillStyle = m.aperturaV > 0.15 ? "#4ade80" : "#f87171";
+            ctx.fillText(`Apertura V: ${m.aperturaV.toFixed(2)} V`, plotX + 8, statsY + 18);
+
+            ctx.fillStyle = "#38bdf8";
+            ctx.fillText(`Ancho Ojo : ${m.anchoOjo.toFixed(3)} s`, plotX + 8, statsY + 36);
+
+            ctx.fillStyle = "#facc15";
+            let qStr = m.qFactor > 50 ? ">50" : m.qFactor.toFixed(1);
+            ctx.fillText(`Factor Q  : ${qStr}`, plotX + 8, statsY + 54);
+
+            // Columna 2 (Valores Promediados)
+            ctx.fillStyle = "#cbd5e1";
+            ctx.fillText(`Tb : ${m.Tb.toFixed(3)} s`, plotX + 145, statsY + 18);
+
+            ctx.fillStyle = "#fb923c";
+            ctx.fillText(`Jitter P-P: ${(m.jitterPP * 1000).toFixed(1)} ms`, plotX + 145, statsY + 36);
+
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillText(`Jitter RMS: ${(m.jitterRMS * 1000).toFixed(1)} ms`, plotX + 145, statsY + 54);
+        }
+
+        ctx.restore();
+    };
+    LiteGraph.registerNodeType("Telecom/OsciloscopioOjo", NodoOsciloscopioOjo);
 
 
     // ==========================================
@@ -1376,7 +2679,7 @@
         const that = this;
         this.addWidget("text", "Nombre", "In 1", v => { that.properties.nombre = v; that.title = "↳ " + v; });
         this.title = "↳ " + this.properties.nombre;
-        this.size = [150, 50];
+        this.size = [180, 60];
         applyLightStyle(this, "#f472b6", "#ffffff");
     }
     NodoInport.title = "Puerto Entrada (In)";
@@ -1393,7 +2696,7 @@
         const that = this;
         this.addWidget("text", "Nombre", "Out 1", v => { that.properties.nombre = v; that.title = "↱ " + v; });
         this.title = "↱ " + this.properties.nombre;
-        this.size = [150, 50];
+        this.size = [180, 60];
         applyLightStyle(this, "#f472b6", "#ffffff");
     }
     NodoOutport.title = "Puerto Salida (Out)";
@@ -1402,7 +2705,6 @@
     };
     LiteGraph.registerNodeType("Telecom/Outport", NodoOutport);
 
-    // Función auxiliar: Genera un Hash SHA-256 irreversible usando Web Crypto API
     async function sha256(message) {
         if (!message) return "";
         const msgBuffer = new TextEncoder().encode(message);
@@ -1411,13 +2713,12 @@
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    // --- SUBSISTEMA CON BLOQUEO POR CONTRASEÑA HASH ---
     function NodoSubgrafo() {
         this.addInput("In", "signal");
         this.addOutput("Out", "signal");
         this.properties = { 
             nombre: "Subsistema",
-            passwordHash: "" // Guarda el hash irreversible, nunca la clave en texto plano
+            passwordHash: ""
         };
         this.subgraph = new LiteGraph.LGraph();
         this.subgraph._parent_node = this;
@@ -1436,20 +2737,18 @@
             that.updateLockTitle();
         });
         
-        this.size = [190, 80];
+        this.size = [220, 85];
         applyLightStyle(this, "#ec4899", "#ffffff");
         this.updateLockTitle();
     }
     NodoSubgrafo.title = "Caja Subsistema";
 
-    // Actualiza el icono de candado en el encabezado de la caja
     NodoSubgrafo.prototype.updateLockTitle = function() {
         const isLocked = Boolean(this.properties.passwordHash && this.properties.passwordHash.length > 0);
         this.title = (isLocked ? "🔒 " : "🔓 ") + (this.properties.nombre || "Subsistema");
         this.setDirtyCanvas(true, true);
     };
 
-    // Menú contextual con clic derecho sobre el nodo para gestionar la contraseña
     NodoSubgrafo.prototype.getExtraMenuOptions = function(canvas, options) {
         const that = this;
         const isLocked = Boolean(this.properties.passwordHash);
@@ -1462,7 +2761,6 @@
                     if (pass && pass.trim().length > 0) {
                         that.properties.passwordHash = await sha256(pass.trim());
                         that.updateLockTitle();
-                        alert("✅ Subsistema protegido con contraseña. Al guardar el esquemático, quedará cifrado de forma segura.");
                     }
                 }
             });
@@ -1476,24 +2774,19 @@
                     if (testHash === that.properties.passwordHash) {
                         that.properties.passwordHash = "";
                         that.updateLockTitle();
-                        alert("🔓 Contraseña eliminada con éxito.");
-                    } else {
-                        alert("❌ Contraseña incorrecta. No se pudo desproteger.");
                     }
                 }
             });
         }
     };
 
-    // Validación al hacer doble clic para acceder al interior
     NodoSubgrafo.prototype.onDblClick = async function() {
         if (this.properties.passwordHash && this.properties.passwordHash.length > 0) {
             const inputPass = window.prompt(`El subsistema "${this.properties.nombre}" está protegido.\nIntroduce la contraseña:`);
-            if (inputPass === null) return; // Cancelado
+            if (inputPass === null) return;
 
             const inputHash = await sha256(inputPass.trim());
             if (inputHash !== this.properties.passwordHash) {
-                alert("❌ Contraseña incorrecta. Acceso denegado.");
                 return;
             }
         }
@@ -1544,7 +2837,7 @@
             this.outputs[i].name = outNodes[i].properties.nombre || `Out ${i+1}`;
         }
 
-        this.size[1] = Math.max(70, Math.max(this.inputs.length, this.outputs.length) * 26 + 35);
+        this.size[1] = Math.max(85, Math.max(this.inputs.length, this.outputs.length) * 26 + 42);
         this.setDirtyCanvas(true, true);
     };
 
@@ -1583,7 +2876,7 @@
             dirtyPlots = true;
         });
         this.title = "📊 " + this.properties.nombre;
-        this.size = [190, 65];
+        this.size = [235, 65];
         applyLightStyle(this, "#ddd6fe", "#ffffff");
     }
     NodoOsciloscopio.title = "Osciloscopio";
@@ -1596,9 +2889,7 @@
         syncOscSelector();
     };
     NodoOsciloscopio.prototype.onExecute = function() {
-        let prev = this.lastSignal;
         this.lastSignal = this.getInputData(0);
-        if (prev !== this.lastSignal) dirtyPlots = true;
         if (!activeOscilloscopes.has(this.id)) {
             activeOscilloscopes.set(this.id, this);
             syncOscSelector(this.id);
@@ -1628,13 +2919,19 @@
 
 
     // ==========================================
-    // 4. RENDERIZADO DE GRÁFICAS ADAPTATIVAS
+    // 4. RENDERIZADO DE GRÁFICAS CON ZOOM INTERACTIVO
     // ==========================================
+    let savedTimeRanges = { x: null, y: null };
+    let savedFreqRanges = { x: null, y: null };
+    let plotsEventsBound = false;
+
     function forcePlotUpdate() {
+        savedFreqRanges = { x: null, y: null };
         dirtyPlots = true;
     }
 
     function onTimeRangeChanged() {
+        savedTimeRanges = { x: null, y: null };
         dirtyPlots = true;
         currentGraph.runStep(1);
     }
@@ -1658,6 +2955,51 @@
         dirtyPlots = true;
     }
 
+    function bindPlotZoomListeners() {
+        if (plotsEventsBound) return;
+        const pt = document.getElementById("plot-time");
+        const pf = document.getElementById("plot-freq");
+
+        if (pt && typeof pt.on === "function") {
+            pt.on("plotly_relayout", (ed) => {
+                if (ed["xaxis.autorange"] || ed["yaxis.autorange"]) {
+                    savedTimeRanges = { x: null, y: null };
+                } else {
+                    if (ed["xaxis.range[0]"] !== undefined && ed["xaxis.range[1]"] !== undefined) {
+                        savedTimeRanges.x = [ed["xaxis.range[0]"], ed["xaxis.range[1]"]];
+                    } else if (Array.isArray(ed["xaxis.range"])) {
+                        savedTimeRanges.x = [...ed["xaxis.range"]];
+                    }
+                    if (ed["yaxis.range[0]"] !== undefined && ed["yaxis.range[1]"] !== undefined) {
+                        savedTimeRanges.y = [ed["yaxis.range[0]"], ed["yaxis.range[1]"]];
+                    } else if (Array.isArray(ed["yaxis.range"])) {
+                        savedTimeRanges.y = [...ed["yaxis.range"]];
+                    }
+                }
+            });
+            plotsEventsBound = true;
+        }
+
+        if (pf && typeof pf.on === "function") {
+            pf.on("plotly_relayout", (ed) => {
+                if (ed["xaxis.autorange"] || ed["yaxis.autorange"]) {
+                    savedFreqRanges = { x: null, y: null };
+                } else {
+                    if (ed["xaxis.range[0]"] !== undefined && ed["xaxis.range[1]"] !== undefined) {
+                        savedFreqRanges.x = [ed["xaxis.range[0]"], ed["xaxis.range[1]"]];
+                    } else if (Array.isArray(ed["xaxis.range"])) {
+                        savedFreqRanges.x = [...ed["xaxis.range"]];
+                    }
+                    if (ed["yaxis.range[0]"] !== undefined && ed["yaxis.range[1]"] !== undefined) {
+                        savedFreqRanges.y = [ed["yaxis.range[0]"], ed["yaxis.range[1]"]];
+                    } else if (Array.isArray(ed["yaxis.range"])) {
+                        savedFreqRanges.y = [...ed["yaxis.range"]];
+                    }
+                }
+            });
+        }
+    }
+
     function updatePlots() {
         if (!dirtyPlots) return;
         dirtyPlots = false;
@@ -1666,25 +3008,93 @@
         if (panel.classList.contains("hidden")) return;
 
         const sel = document.getElementById("oscSelect");
-        const selId = sel.value !== "" ? Number(sel.value) : -1;
+        const selId = (sel && sel.value !== "") ? Number(sel.value) : -1;
         const oscNode = activeOscilloscopes.get(selId);
-        const in1 = oscNode ? oscNode.lastSignal : null;
+        const in1 = (oscNode && oscNode.getInputData(0)) ? oscNode.getInputData(0) : (oscNode ? oscNode.lastSignal : null);
 
         const { t, tMin, tMax, dt } = getCurrentTimeVector();
         const fMax = Math.abs(parseFloat(document.getElementById("fMax").value)) || 50.0;
-
         const { axis: active_f_axis } = getActiveFrequencyAxis(fMax);
 
         const oscName = oscNode ? oscNode.properties.nombre : "Sin Osciloscopio activo";
         const sigName = (in1 && in1.name) ? in1.name : "Señal";
-        const y = in1 ? in1.values : new Array(N).fill(0);
+        const y = (in1 && in1.values) ? in1.values : new Array(N).fill(0);
         const isDisc = in1 ? in1.discrete : false;
+        const isEyeScope = oscNode && oscNode.type === "Telecom/OsciloscopioOjo";
 
-        // 1. Gráfica Temporal
         let timeTraces = [];
-        let xLabel = isDisc ? "$n$ (índice entero)" : "Tiempo t (s)";
+        let xLabel = isDisc ? "n (índice entero)" : "Tiempo t (s)";
 
-        if (isDisc && in1 && in1.stemX) {
+        // Representación de alta resolución del diagrama de ojo en Plotly
+        if (isEyeScope && in1 && in1.values) {
+            const Tb = Math.max(0.005, Number(oscNode.properties.tb || 0.5));
+            const T_eye = 2 * Tb;
+            const tStart = in1.t_start !== undefined ? in1.t_start : 0;
+            const tOffset = Number(oscNode.properties.t_offset || 0);
+            const tBase = tStart + tOffset;
+            const numTraces = Math.max(8, Math.round(Number(oscNode.properties.num_traces || 24)));
+            const samplesPerTrace = 160;
+            const dtTrace = T_eye / (samplesPerTrace - 1);
+
+            function evalEyeSignal(timeVal) {
+                if (in1.sourceNode && typeof in1.sourceNode.evalAt === "function") {
+                    return in1.sourceNode.evalAt(timeVal, dt);
+                }
+                if (timeVal < tMin || timeVal > tMax) return 0;
+                let idx = (timeVal - tMin) / dt;
+                let i0 = Math.floor(idx);
+                if (i0 < 0) return in1.values[0];
+                if (i0 >= N - 1) return in1.values[N - 1];
+                let frac = idx - i0;
+                return in1.values[i0] * (1 - frac) + in1.values[i0 + 1] * frac;
+            }
+
+            let eyeTimeAxis = [];
+            for (let s = 0; s < samplesPerTrace; s++) eyeTimeAxis.push(s * dtTrace);
+
+            for (let k = 0; k < numTraces; k++) {
+                let startK = tBase + k * Tb;
+                if (startK > tMax || startK + T_eye < tMin) continue;
+
+                let yTrace = [];
+                for (let s = 0; s < samplesPerTrace; s++) {
+                    let ti = startK + s * dtTrace;
+                    yTrace.push(evalEyeSignal(ti));
+                }
+
+                // Trazas translúcidas superpuestas: el solapamiento genera el mapa de densidad e intensifica el ojo y el jitter
+                timeTraces.push({
+                    x: eyeTimeAxis,
+                    y: yTrace,
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: 'rgba(37, 99, 235, 0.32)', width: 1.5 },
+                    showlegend: k === 0,
+                    name: `Ojo (2·Tb)`
+                });
+            }
+
+            // Marcador visual vertical en el instante óptimo de decisión (t = Tb)
+            let yMinEye = -1.5, yMaxEye = 1.5;
+            if (timeTraces.length > 0) {
+                let allY = timeTraces.flatMap(tr => tr.y);
+                if (allY.length > 0) {
+                    yMinEye = Math.min(...allY);
+                    yMaxEye = Math.max(...allY);
+                }
+            }
+            timeTraces.push({
+                x: [Tb, Tb],
+                y: [yMinEye * 1.1, yMaxEye * 1.1],
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#ef4444', width: 1.5, dash: 'dot' },
+                name: 'Instante decisión (Tb)'
+            });
+
+            let metricInfo = oscNode.eyeMetrics ? ` | Apertura=${oscNode.eyeMetrics.aperturaV.toFixed(2)}V, Jitter=${(oscNode.eyeMetrics.jitterPP * 1000).toFixed(1)}ms` : "";
+            xLabel = `Tiempo en ventana 2·Tb (s) [Tb = ${Tb.toFixed(3)}s]${metricInfo}`;
+        } else if (isDisc && in1 && in1.stemX) {
             let stemX_lines = [];
             let stemY_lines = [];
             for (let i = 0; i < in1.stemX.length; i++) {
@@ -1719,17 +3129,45 @@
             });
         }
 
+        const defaultTimeRange = isEyeScope ? [0, 2 * Math.max(0.01, Number(oscNode.properties.tb || 0.5))] : [tMin, tMax];
+        const timeXAxis = {
+            title: xLabel,
+            range: savedTimeRanges.x ? savedTimeRanges.x : defaultTimeRange,
+            gridcolor: '#e2e8f0',
+            zerolinecolor: '#94a3b8'
+        };
+        const timeYAxis = {
+            title: 'Amplitud (V)',
+            gridcolor: '#e2e8f0',
+            zerolinecolor: '#94a3b8'
+        };
+        if (savedTimeRanges.y) {
+            timeYAxis.range = savedTimeRanges.y;
+        }
+
+        const plotConfig = {
+            responsive: true,
+            scrollZoom: true,
+            displayModeBar: true,
+            displaylogo: false,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d']
+        };
+
+        const chartTitle = isEyeScope 
+            ? `<b>Diagrama de Ojo — ${oscName}</b> [${sigName}]`
+            : `<b>Dominio del Tiempo — ${oscName}</b> [${sigName}]`;
+
         Plotly.react('plot-time', timeTraces, {
-            title: { text: `<b>Dominio del Tiempo — ${oscName}</b> [${sigName}]`, font: { size: 12, color: '#1e293b' } },
-            xaxis: { title: xLabel, range: [tMin, tMax], gridcolor: '#e2e8f0', zerolinecolor: '#94a3b8' },
-            yaxis: { title: 'Amplitud (V)', gridcolor: '#e2e8f0', zerolinecolor: '#94a3b8' },
+            title: { text: chartTitle, font: { size: 12, color: '#1e293b' } },
+            dragmode: 'zoom',
+            xaxis: timeXAxis,
+            yaxis: timeYAxis,
             margin: { t: 34, b: 36, l: 48, r: 16 },
             paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
             showlegend: true,
             legend: { x: 0.7, y: 0.98, bgcolor: 'rgba(255,255,255,0.7)' }
-        }, { responsive: true, displayModeBar: false });
+        }, plotConfig);
 
-        // 2. Gráfica en Frecuencia Adaptativa
         if (showFreqSpectrum) {
             let signalDt = in1 && in1.dt ? in1.dt : dt;
             let spectrum = in1 ? computeSpectrum(in1, signalDt, active_f_axis) : new Array(active_f_axis.length).fill(0);
@@ -1760,20 +3198,40 @@
                 });
             }
 
+            const freqXAxis = {
+                title: 'Frecuencia f (Hz)',
+                range: savedFreqRanges.x ? savedFreqRanges.x : [-fMax, fMax],
+                gridcolor: '#e2e8f0',
+                zerolinecolor: '#94a3b8'
+            };
+            const freqYAxis = {
+                title: 'Magnitud',
+                gridcolor: '#e2e8f0',
+                zerolinecolor: '#94a3b8'
+            };
+            if (savedFreqRanges.y) {
+                freqYAxis.range = savedFreqRanges.y;
+            } else {
+                freqYAxis.rangemode = 'tozero';
+            }
+
             Plotly.react('plot-freq', freqTraces, {
                 title: { text: `<b>Espectro de Frecuencia — ${oscName}</b> (Resolución adaptativa)`, font: { size: 12, color: '#1e293b' } },
-                xaxis: { title: 'Frecuencia f (Hz)', range: [-fMax, fMax], gridcolor: '#e2e8f0', zerolinecolor: '#94a3b8' },
-                yaxis: { title: 'Magnitud', rangemode: 'tozero', gridcolor: '#e2e8f0', zerolinecolor: '#94a3b8' },
+                dragmode: 'zoom',
+                xaxis: freqXAxis,
+                yaxis: freqYAxis,
                 margin: { t: 34, b: 36, l: 48, r: 16 },
                 paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
                 showlegend: true,
                 legend: { x: 0.7, y: 0.98, bgcolor: 'rgba(255,255,255,0.7)' }
-            }, { responsive: true, displayModeBar: false });
+            }, plotConfig);
         }
+
+        bindPlotZoomListeners();
     }
 
     // ==========================================
-    // 5. INICIALIZACIÓN, EVENTOS Y CONTROL TÁCTIL
+    // 5. SELECCIÓN MÚLTIPLE Y ENCAPSULADO EN SUBSISTEMA
     // ==========================================
     const mainGraph = new LiteGraph.LGraph();
     let currentGraph = mainGraph;
@@ -1784,6 +3242,276 @@
     canvas.clear_background_color = "#f1f5f9";
     canvas.render_curved_connections = true;
     canvas.default_link_color = "#64748b";
+    canvas.allow_MultipleSelection = true;
+
+    let boxSelectionMode = false;
+    let customDragRect = null;
+
+    function toggleSelectionMode() {
+        boxSelectionMode = !boxSelectionMode;
+        const btn = document.getElementById("btnSelectMode");
+        if (boxSelectionMode) {
+            btn.classList.add("active-mode");
+        } else {
+            btn.classList.remove("active-mode");
+            customDragRect = null;
+        }
+    }
+
+    canvasElement.addEventListener("mousedown", function(e) {
+        if (e.button !== 0) return;
+        canvas.adjustMouseEvent(e);
+        const node = currentGraph.getNodeOnPos(e.canvasX, e.canvasY, canvas.visible_nodes);
+        if (!node && (boxSelectionMode || e.shiftKey)) {
+            customDragRect = {
+                x0: e.canvasX,
+                y0: e.canvasY,
+                x1: e.canvasX,
+                y1: e.canvasY
+            };
+            canvas.dragging_canvas = false;
+            e.stopImmediatePropagation();
+            e.preventDefault();
+        }
+    }, true);
+
+    window.addEventListener("mousemove", function(e) {
+        if (!customDragRect) return;
+        canvas.adjustMouseEvent(e);
+        customDragRect.x1 = e.canvasX;
+        customDragRect.y1 = e.canvasY;
+        canvas.dragging_canvas = false;
+        canvas.setDirty(true, true);
+        e.stopImmediatePropagation();
+    }, true);
+
+    window.addEventListener("mouseup", function(e) {
+        if (!customDragRect) return;
+        const minX = Math.min(customDragRect.x0, customDragRect.x1);
+        const maxX = Math.max(customDragRect.x0, customDragRect.x1);
+        const minY = Math.min(customDragRect.y0, customDragRect.y1);
+        const maxY = Math.max(customDragRect.y0, customDragRect.y1);
+
+        const toSelect = [];
+        const nodes = currentGraph._nodes || [];
+        for (let n of nodes) {
+            const nx = n.pos[0], ny = n.pos[1];
+            const nw = n.size[0], nh = n.size[1];
+            if (nx + nw >= minX && nx <= maxX && ny + nh >= minY && ny <= maxY) {
+                toSelect.push(n);
+            }
+        }
+        canvas.deselectAllNodes();
+        if (toSelect.length > 0) {
+            canvas.selectNodes(toSelect);
+        }
+        customDragRect = null;
+        canvas.setDirty(true, true);
+    }, true);
+
+    const origOnDrawOverlay = canvas.onDrawOverlay;
+    canvas.onDrawOverlay = function(ctx) {
+        if (origOnDrawOverlay) origOnDrawOverlay.call(this, ctx);
+        if (!customDragRect) return;
+
+        ctx.save();
+        this.ds.toCanvasContext(ctx);
+        const x = Math.min(customDragRect.x0, customDragRect.x1);
+        const y = Math.min(customDragRect.y0, customDragRect.y1);
+        const w = Math.abs(customDragRect.x1 - customDragRect.x0);
+        const h = Math.abs(customDragRect.y1 - customDragRect.y0);
+
+        ctx.fillStyle = "rgba(59, 130, 246, 0.14)";
+        ctx.strokeStyle = "#2563eb";
+        ctx.lineWidth = 1.5 / this.ds.scale;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x, y, w, h);
+        ctx.restore();
+    };
+
+    const origGetCanvasMenuOptions = canvas.getCanvasMenuOptions;
+    canvas.getCanvasMenuOptions = function() {
+        const opts = origGetCanvasMenuOptions ? origGetCanvasMenuOptions.apply(this, arguments) : [];
+        const selCount = Object.keys(this.selected_nodes || {}).length;
+        if (selCount > 0) {
+            opts.push(null);
+            opts.push({
+                content: `📦 Encapsular ${selCount} bloque(s) en Caja Subsistema`,
+                callback: () => encapsulateSelectedNodes()
+            });
+        }
+        return opts;
+    };
+
+    const origGetNodeMenuOptions = canvas.getNodeMenuOptions;
+    canvas.getNodeMenuOptions = function(node) {
+        const opts = origGetNodeMenuOptions ? origGetNodeMenuOptions.apply(this, arguments) : [];
+        const selCount = Object.keys(this.selected_nodes || {}).length;
+        if (selCount > 1) {
+            opts.push(null);
+            opts.push({
+                content: `📦 Encapsular ${selCount} bloques seleccionados en Subsistema`,
+                callback: () => encapsulateSelectedNodes()
+            });
+        }
+        return opts;
+    };
+
+    function encapsulateSelectedNodes() {
+        const selectedMap = canvas.selected_nodes || {};
+        const selectedNodes = Object.values(selectedMap).filter(
+            n => n.type !== "Telecom/Inport" && n.type !== "Telecom/Outport"
+        );
+        if (selectedNodes.length === 0) return;
+
+        const selectedIds = new Set(selectedNodes.map(n => n.id));
+
+        let avgX = 0, avgY = 0;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity;
+        selectedNodes.forEach(n => {
+            avgX += n.pos[0];
+            avgY += n.pos[1];
+            if (n.pos[0] < minX) minX = n.pos[0];
+            if (n.pos[1] < minY) minY = n.pos[1];
+            if (n.pos[0] + n.size[0] > maxX) maxX = n.pos[0] + n.size[0];
+        });
+        avgX /= selectedNodes.length;
+        avgY /= selectedNodes.length;
+
+        const internalLinks = [];
+        const incomingLinks = [];
+        const outgoingLinks = [];
+
+        Object.values(currentGraph.links || {}).forEach(link => {
+            if (!link) return;
+            const origIn = selectedIds.has(link.origin_id);
+            const targetIn = selectedIds.has(link.target_id);
+            if (origIn && targetIn) {
+                internalLinks.push({ ...link });
+            } else if (!origIn && targetIn) {
+                incomingLinks.push({ ...link });
+            } else if (origIn && !targetIn) {
+                outgoingLinks.push({ ...link });
+            }
+        });
+
+        const subNode = LiteGraph.createNode("Telecom/Subgrafo");
+        subNode.pos = [avgX, avgY];
+        currentGraph.add(subNode);
+
+        subNode.subgraph.clear();
+
+        const idMap = new Map();
+        selectedNodes.forEach(oldNode => {
+            const data = oldNode.serialize();
+            const newNode = LiteGraph.createNode(oldNode.type);
+            newNode.configure(data);
+            newNode.pos = [
+                oldNode.pos[0] - minX + 240,
+                oldNode.pos[1] - minY + 80
+            ];
+            subNode.subgraph.add(newNode);
+            idMap.set(oldNode.id, newNode);
+
+            if (oldNode.type === "Telecom/Osciloscopio") {
+                activeOscilloscopes.delete(oldNode.id);
+                activeOscilloscopes.set(newNode.id, newNode);
+            }
+        });
+
+        internalLinks.forEach(l => {
+            const src = idMap.get(l.origin_id);
+            const dst = idMap.get(l.target_id);
+            if (src && dst) {
+                src.connect(l.origin_slot, dst, l.target_slot);
+            }
+        });
+
+        const inportMap = new Map();
+        const externalToConnectIn = [];
+        incomingLinks.forEach(l => {
+            const key = `${l.origin_id}:${l.origin_slot}`;
+            let portIndex;
+            let inNode;
+            if (!inportMap.has(key)) {
+                portIndex = inportMap.size;
+                inNode = LiteGraph.createNode("Telecom/Inport");
+                const portName = `In ${portIndex + 1}`;
+                inNode.properties.nombre = portName;
+                inNode.title = "↳ " + portName;
+                if (inNode.widgets && inNode.widgets[0]) inNode.widgets[0].value = portName;
+                inNode.pos = [40, 80 + portIndex * 90];
+                subNode.subgraph.add(inNode);
+                inportMap.set(key, { portIndex, inNode });
+                externalToConnectIn.push({ origin_id: l.origin_id, origin_slot: l.origin_slot, portIndex });
+            } else {
+                const entry = inportMap.get(key);
+                portIndex = entry.portIndex;
+                inNode = entry.inNode;
+            }
+            const dst = idMap.get(l.target_id);
+            if (inNode && dst) {
+                inNode.connect(0, dst, l.target_slot);
+            }
+        });
+
+        const outportMap = new Map();
+        const externalToConnectOut = [];
+        outgoingLinks.forEach(l => {
+            const key = `${l.origin_id}:${l.origin_slot}`;
+            let portIndex;
+            let outNode;
+            if (!outportMap.has(key)) {
+                portIndex = outportMap.size;
+                outNode = LiteGraph.createNode("Telecom/Outport");
+                const portName = `Out ${portIndex + 1}`;
+                outNode.properties.nombre = portName;
+                outNode.title = "↱ " + portName;
+                if (outNode.widgets && outNode.widgets[0]) outNode.widgets[0].value = portName;
+                outNode.pos = [maxX - minX + 340, 80 + portIndex * 90];
+                subNode.subgraph.add(outNode);
+                outportMap.set(key, { portIndex, outNode });
+
+                const src = idMap.get(l.origin_id);
+                if (src) {
+                    src.connect(l.origin_slot, outNode, 0);
+                }
+            } else {
+                const entry = outportMap.get(key);
+                portIndex = entry.portIndex;
+                outNode = entry.outNode;
+            }
+            externalToConnectOut.push({ portIndex, target_id: l.target_id, target_slot: l.target_slot });
+        });
+
+        subNode.syncPortsFromInner();
+        subNode.subgraph.start();
+        syncAllWidgets(subNode.subgraph);
+
+        externalToConnectIn.forEach(item => {
+            const extOrigin = currentGraph.getNodeById(item.origin_id);
+            if (extOrigin) {
+                extOrigin.connect(item.origin_slot, subNode, item.portIndex);
+            }
+        });
+
+        externalToConnectOut.forEach(item => {
+            const extTarget = currentGraph.getNodeById(item.target_id);
+            if (extTarget) {
+                subNode.connect(item.portIndex, extTarget, item.target_slot);
+            }
+        });
+
+        selectedNodes.forEach(oldNode => {
+            currentGraph.remove(oldNode);
+        });
+
+        canvas.deselectAllNodes();
+        canvas.selectNodes([subNode]);
+        syncOscSelector();
+        dirtyPlots = true;
+        canvas.setDirty(true, true);
+    }
 
     canvas.onNodeSelected = function(node) {
         if (node && node.type === "Telecom/Osciloscopio") {
@@ -1924,11 +3652,26 @@
         dirtyPlots = true;
     }
 
-    function mainLoop() {
-        if (mainGraph.status === LiteGraph.LGraph.STATUS_RUNNING) {
-            mainGraph.runStep(1);
+    let lastExecutionTime = 0;
+    const SIMULATION_INTERVAL_MS = 60; // Frecuencia de cálculo y refresco (aprox. 16 FPS para mantener alto rendimiento)
+
+    function mainLoop(timestamp) {
+        if (isRunning) {
+            if (timestamp - lastExecutionTime >= SIMULATION_INTERVAL_MS) {
+                lastExecutionTime = timestamp;
+                if (mainGraph.status === LiteGraph.LGraph.STATUS_RUNNING) {
+                    mainGraph.runStep(1);
+                }
+
+                // Redibujado exclusivo del lienzo del canvas (nodos, diagrama de ojo y constelaciones)
+                canvas.draw(true, true);
+            }
         }
-        updatePlots();
+
+        // Las gráficas Plotly sólo se renderizan cuando dirtyPlots es explícitamente activado por el usuario
+        if (dirtyPlots) {
+            updatePlots();
+        }
         requestAnimationFrame(mainLoop);
     }
 
@@ -1990,12 +3733,25 @@
     }
 
     function clearCanvas() {
+        if (currentGraph !== mainGraph) {
+            currentGraph = mainGraph;
+            canvas.setGraph(mainGraph);
+            document.getElementById("subgraph-banner").style.display = "none";
+        }
         mainGraph.clear();
         activeOscilloscopes.clear();
         oscCounter = 1;
-        syncOscSelector();
+        savedTimeRanges = { x: null, y: null };
+        savedFreqRanges = { x: null, y: null };
+        lastRenderedSignalHash = "";
+
+        const sel = document.getElementById("oscSelect");
+        if (sel) sel.innerHTML = "";
+
         mainGraph.start();
         dirtyPlots = true;
+        updatePlots();
+        canvas.setDirty(true, true);
     }
 
     // ==========================================
@@ -2026,7 +3782,7 @@
                 const data = JSON.parse(e.target.result);
                 restaurarEsquematico(data);
             } catch (err) {
-                alert("Error al cargar el archivo de esquemático: " + err.message);
+                console.error("Error al cargar el archivo de esquemático:", err);
             }
         };
         reader.readAsText(file);
@@ -2036,29 +3792,27 @@
     function saveToLocalStorage() {
         const graphData = mainGraph.serialize();
         localStorage.setItem("simutelecom_saved_graph", JSON.stringify(graphData));
-        alert("Esquemático guardado correctamente en el navegador.");
     }
 
     function loadFromLocalStorage() {
         const saved = localStorage.getItem("simutelecom_saved_graph");
-        if (!saved) {
-            alert("No hay ningún esquemático guardado previamente en el navegador.");
-            return;
-        }
+        if (!saved) return;
         try {
             const data = JSON.parse(saved);
             restaurarEsquematico(data);
         } catch (err) {
-            alert("Error al restaurar esquemático: " + err.message);
+            console.error("Error al restaurar esquemático:", err);
         }
     }
 
-    // Sincroniza recursivamente las propiedades deserializadas en el widget.value visual
     function syncAllWidgets(g) {
         if (!g || !g._nodes) return;
         g._nodes.forEach(node => {
             if (node.type === "Telecom/GeneradorContinuo" && typeof node.updateWidgetVisibility === "function") {
                 node.updateWidgetVisibility();
+            }
+            if (node.type === "Telecom/Filtro" && typeof node.updateWidgetsVisibility === "function") {
+                node.updateWidgetsVisibility();
             }
             if (node.widgets && node.properties) {
                 node.widgets.forEach(w => {
@@ -2066,7 +3820,9 @@
                     if (w.name.includes("Etiqueta") || w.name.includes("Nombre") || w.name.includes("ID")) propKey = "nombre";
                     else if (w.name.includes("Señal")) propKey = "tipo";
                     else if (w.name.includes("Amplitud")) propKey = "amp";
-                    else if (w.name.includes("Frec") || w.name.includes("Portadora")) propKey = (node.properties.fc !== undefined ? "fc" : "freq");
+                    else if (w.name.includes("Periodo T") || w.name.includes("Periodo Tb")) propKey = (node.type === "Telecom/OsciloscopioOjo" ? "tb" : "periodo");
+                    else if (w.name.includes("Frec") || w.name.includes("Portadora") || w.name.includes("fc") || w.name.includes("f0")) propKey = (node.properties.fc !== undefined ? "fc" : "freq");
+                    else if (w.name.includes("Ancho Bw") || w.name.includes("Ancho B")) propKey = "bw";
                     else if (w.name.includes("Ancho") || w.name.includes("Duración")) propKey = "ancho";
                     else if (w.name.includes("Tau")) propKey = "tau";
                     else if (w.name.includes("Desplaz")) propKey = "t0";
@@ -2076,14 +3832,22 @@
                     else if (w.name.includes("Inicio n0")) propKey = "n0";
                     else if (w.name.includes("Bits")) propKey = "bits";
                     else if (w.name.includes("Código")) propKey = "codigo";
-                    else if (w.name.includes("Tasa")) propKey = "rb";
-                    else if (w.name.includes("Inicio t0")) propKey = "t_start";
+                    else if (w.name.includes("Tasa") || w.name.includes("Baudios")) propKey = (node.properties.baudios !== undefined ? "baudios" : "rb");
+                    else if (w.name.includes("Inicio t0") || w.name.includes("Offset t0")) propKey = (node.type === "Telecom/OsciloscopioOjo" ? "t_offset" : "t_start");
+                    else if (w.name.includes("Auto Tb/Ts")) propKey = "autoTb";
+                    else if (w.name.includes("Trazas máx")) propKey = "num_traces";
+                    else if (w.name.includes("Auto-Sincronizar")) propKey = "autoSync";
+                    else if (w.name.includes("Auto-Alinear")) propKey = "autoAlinear";
+                    else if (w.name.includes("Acumular")) propKey = "acumular";
+                    else if (w.name.includes("N.º Símbolos")) propKey = "num_sym";
+                    else if (w.name.includes("Atenuación")) propKey = "atenuacion";
+                    else if (w.name.includes("Ruido")) propKey = "ruido";
+                    else if (w.name.includes("Retardo")) propKey = "retardo";
                     else if (w.name.includes("k1")) propKey = "k1";
                     else if (w.name.includes("k2")) propKey = "k2";
                     else if (w.name.includes("Ganancia")) propKey = (node.properties.gain !== undefined ? "gain" : "k");
                     else if (w.name.includes("Tipo")) propKey = "tipo";
                     else if (w.name.includes("Resp")) propKey = "aprox";
-                    else if (w.name.includes("Ancho B")) propKey = "bw";
                     else if (w.name.includes("Orden")) propKey = "orden";
                     else if (w.name.includes("Ver |H(f)|")) propKey = "showH";
                     else if (w.name.includes("fs")) propKey = "fs_sample";
@@ -2101,6 +3865,8 @@
 
             if (node.title && node.properties && node.properties.nombre) {
                 if (node.type === "Telecom/Osciloscopio") node.title = "📊 " + node.properties.nombre;
+                else if (node.type === "Telecom/OsciloscopioOjo") node.title = "👁️ " + node.properties.nombre;
+                else if (node.type === "Telecom/MedidorBER") node.title = "🎯 " + node.properties.nombre;
                 else if (node.type === "Telecom/Inport") node.title = "↳ " + node.properties.nombre;
                 else if (node.type === "Telecom/Outport") node.title = "↱ " + node.properties.nombre;
             }
@@ -2115,11 +3881,11 @@
     function restaurarEsquematico(data) {
         mainGraph.clear();
         activeOscilloscopes.clear();
+        savedTimeRanges = { x: null, y: null };
+        savedFreqRanges = { x: null, y: null };
         
-        // 1. Restaurar topología completa
         mainGraph.configure(data);
 
-        // 2. Localizar y activar los subgrafos internos
         const subgrafos = mainGraph.findNodesByType("Telecom/Subgrafo");
         subgrafos.forEach(sgNode => {
             if (sgNode.subgraph) {
@@ -2128,12 +3894,10 @@
             }
         });
 
-        // 3. Sincronizar todos los widgets visuales con sus propiedades numéricas cargadas
         syncAllWidgets(mainGraph);
 
-        // 4. Registrar osciloscopios del grafo raíz y de subgrafos anidados
         function registrarOsciloscopios(graph) {
-            const oscNodes = graph.findNodesByType("Telecom/Osciloscopio");
+            const oscNodes = graph.findNodesByType("Telecom/Osciloscopio").concat(graph.findNodesByType("Telecom/OsciloscopioOjo"));
             oscNodes.forEach(node => {
                 activeOscilloscopes.set(node.id, node);
             });
@@ -2146,7 +3910,6 @@
         syncOscSelector();
         mainGraph.start();
         
-        // 5. Forzar ciclos de simulación y refresco de interfaz inmediato
         mainGraph.runStep(1);
         mainGraph.runStep(1);
 
@@ -2156,7 +3919,6 @@
         resetView();
     }
 
-    // Inicialización del motor y del bucle principal
     resizeCanvas();
     mainGraph.start();
     requestAnimationFrame(mainLoop);
