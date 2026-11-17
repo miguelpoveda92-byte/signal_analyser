@@ -150,6 +150,62 @@
             cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.08);
         }
         #toggle-panel-btn:hover { background: #f1f5f9; }
+
+        /* Modal Tabla de Niveles de Cuantización y Códigos Binarios */
+        #quant-table-modal {
+            display: none; position: fixed; inset: 0; z-index: 100;
+            background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(2px);
+            align-items: center; justify-content: center; padding: 16px;
+        }
+        #quant-table-modal.open { display: flex; }
+        .qmodal-card {
+            background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px;
+            width: 100%; max-width: 640px; max-height: 85vh; display: flex; flex-direction: column;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); overflow: hidden;
+        }
+        .qmodal-header {
+            padding: 12px 16px; background: #0f172a; color: #f8fafc;
+            display: flex; align-items: center; justify-content: space-between;
+            font-weight: 700; font-size: 0.92rem;
+        }
+        .qmodal-close {
+            background: #334155; border: none; color: #f8fafc; border-radius: 6px;
+            padding: 4px 10px; cursor: pointer; font-weight: 700; font-size: 0.85rem;
+        }
+        .qmodal-close:hover { background: #ef4444; }
+        .qmodal-meta {
+            padding: 10px 16px; background: #f1f5f9; border-bottom: 1px solid #e2e8f0;
+            font-size: 0.78rem; color: #334155; display: flex; flex-wrap: wrap; gap: 12px;
+        }
+        .qmodal-body {
+            padding: 12px 16px; overflow-y: auto; flex: 1;
+        }
+        .qtable {
+            width: 100%; border-collapse: collapse; font-size: 0.8rem; font-family: 'Segoe UI', monospace;
+        }
+        .qtable th {
+            position: sticky; top: 0; background: #e2e8f0; color: #0f172a;
+            text-align: left; padding: 7px 10px; border-bottom: 2px solid #cbd5e1;
+        }
+        .qtable td {
+            padding: 6px 10px; border-bottom: 1px solid #f1f5f9; color: #1e293b;
+        }
+        .qtable tr:nth-child(even) { background: #f8fafc; }
+        .qtable tr.active-level { background: #dbeafe; font-weight: 600; }
+        .bin-badge {
+            display: inline-block; background: #0f172a; color: #38bdf8;
+            padding: 2px 7px; border-radius: 4px; font-weight: 700; letter-spacing: 0.6px;
+        }
+        .qmodal-charts {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            padding: 10px 16px; background: #ffffff; border-bottom: 1px solid #e2e8f0;
+        }
+        @media (max-width: 600px) {
+            .qmodal-charts { grid-template-columns: 1fr; }
+        }
+        .qmodal-chart-box {
+            height: 210px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -194,13 +250,26 @@
             <button class="module-btn" onclick="addModule('Telecom/Filtro')">
                 <span>Filtro LTI</span><span class="dot" style="background:#0d9488"></span>
             </button>
+        </div>
+
+        <div class="category-title" onclick="toggleSidebarSection(this)">
+            <span>3. Conversión A/D (PCM)</span>
+            <span class="accordion-arrow">▼</span>
+        </div>
+        <div class="category-content">
             <button class="module-btn" onclick="addModule('Telecom/Muestreo')">
                 <span>Muestreo Ideal (xs)</span><span class="dot" style="background:#10b981"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/Cuantizador')">
+                <span>Cuantizador (Midthread/Midrise)</span><span class="dot" style="background:#06b6d4"></span>
+            </button>
+            <button class="module-btn" onclick="addModule('Telecom/Codificador')">
+                <span>Codificador PCM (n bits)</span><span class="dot" style="background:#0284c7"></span>
             </button>
         </div>
 
         <div class="category-title" onclick="toggleSidebarSection(this)">
-            <span>3. Modulación y Demodulación</span>
+            <span>4. Modulación y Demodulación</span>
             <span class="accordion-arrow">▼</span>
         </div>
         <div class="category-content">
@@ -225,7 +294,7 @@
         </div>
 
         <div class="category-title" onclick="toggleSidebarSection(this)">
-            <span>4. Canal de Comunicaciones</span>
+            <span>5. Canal de Comunicaciones</span>
             <span class="accordion-arrow">▼</span>
         </div>
         <div class="category-content">
@@ -235,7 +304,7 @@
         </div>
 
         <div class="category-title" onclick="toggleSidebarSection(this)">
-            <span>5. Subsistemas y Puertos</span>
+            <span>6. Subsistemas y Puertos</span>
             <span class="accordion-arrow">▼</span>
         </div>
         <div class="category-content">
@@ -254,7 +323,7 @@
         </div>
 
         <div class="category-title" onclick="toggleSidebarSection(this)">
-            <span>6. Visualización</span>
+            <span>7. Visualización</span>
             <span class="accordion-arrow">▼</span>
         </div>
         <div class="category-content">
@@ -270,7 +339,7 @@
         </div>
 
         <div class="category-title" onclick="toggleSidebarSection(this)">
-            <span>7. Control y Esquemas</span>
+            <span>8. Control y Esquemas</span>
             <span class="accordion-arrow">▼</span>
         </div>
         <div class="category-content">
@@ -279,10 +348,10 @@
                 <button id="btnStep" class="action-btn" style="width: 50px; display: block;" onclick="stepSimulation()" title="Avanzar 1 paso de simulación">⏭ Paso</button>
             </div>
             <button class="action-btn" onclick="saveGraphToFile()">💾 Guardar JSON</button>
-            <button class="action-btn" onclick="document.getElementById('fileInput').click()">📂 Cargar JSON</button>
+            <button class="action-btn" onclick="document.getElementById('fileInput').click()">📂 Combinar / Cargar JSON</button>
             <input type="file" id="fileInput" accept=".json" style="display:none;" onchange="loadGraphFromFile(event)">
             <button class="action-btn" onclick="saveToLocalStorage()">📌 Guardar en Navegador</button>
-            <button class="action-btn" onclick="loadFromLocalStorage()">🔄 Cargar de Navegador</button>
+            <button class="action-btn" onclick="loadFromLocalStorage()">🔄 Combinar de Navegador</button>
         </div>
 
         <div class="category-title" onclick="toggleSidebarSection(this)">
@@ -342,6 +411,34 @@
         </div>
         <div id="plot-time" class="plot-container"></div>
         <div id="plot-freq" class="plot-container"></div>
+    </div>
+
+    <!-- Modal Tabla de Niveles de Cuantización / Codificación PCM -->
+    <div id="quant-table-modal" onclick="if(event.target === this) closeQuantTableModal()">
+        <div class="qmodal-card">
+            <div class="qmodal-header">
+                <span id="qmodal-title">📊 Niveles de Cuantización</span>
+                <button class="qmodal-close" onclick="closeQuantTableModal()">✕ Cerrar</button>
+            </div>
+            <div class="qmodal-meta" id="qmodal-meta"></div>
+            <div class="qmodal-charts" id="qmodal-charts">
+                <div id="qmodal-plot-transfer" class="qmodal-chart-box"></div>
+                <div id="qmodal-plot-error" class="qmodal-chart-box"></div>
+            </div>
+            <div class="qmodal-body">
+                <table class="qtable">
+                    <thead id="qmodal-thead">
+                        <tr>
+                            <th>Nivel (k)</th>
+                            <th>Tensión Reconst. y_q (V)</th>
+                            <th>Intervalo Decisión (V)</th>
+                            <th>Muestras</th>
+                        </tr>
+                    </thead>
+                    <tbody id="qmodal-tbody"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1273,6 +1370,1014 @@
     LiteGraph.registerNodeType("Telecom/Muestreo", NodoMuestreo);
 
 
+    // --- CUANTIZADOR (MIDTHREAD, MIDRISE, UNIFORME, NO UNIFORME LEY μ / LEY A) ---
+    function NodoCuantizador() {
+        this.addInput("xs(t)", "signal");
+        this.addOutput("xq(t)", "signal");
+        this.properties = {
+            nombre: "xq(t)",
+            niveles: 8,
+            tipo: "Uniforme Midrise",
+            vMax: 1.0,
+            mu: 255,
+            leyA: 87.6
+        };
+
+        const that = this;
+        this.wName = this.addWidget("text", "Etiqueta", "xq(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
+        this.wNiveles = this.addWidget("number", "N.º Niveles (L)", 8, v => {
+            that.properties.niveles = Math.max(2, Math.min(1024, Math.round(Number(v))));
+            dirtyPlots = true;
+        }, { min: 2, max: 1024, step: 1 });
+        this.wTipo = this.addWidget("combo", "Tipo Cuantiz.", "Uniforme Midrise", v => {
+            that.properties.tipo = v;
+            that.updateWidgetVisibility();
+            dirtyPlots = true;
+        }, {
+            values: [
+                "Uniforme Midrise",
+                "Uniforme Midthread",
+                "No Uniforme Ley μ (Midrise)",
+                "No Uniforme Ley μ (Midthread)",
+                "No Uniforme Ley A (Midrise)",
+                "No Uniforme Ley A (Midthread)"
+            ]
+        });
+        this.wVmax = this.addWidget("number", "Rango ±Vmax (V)", 1.0, v => {
+            that.properties.vMax = Math.max(0.01, Number(v));
+            dirtyPlots = true;
+        }, { min: 0.01, step: 0.1 });
+        this.wMu = this.addWidget("number", "Parámetro μ", 255, v => {
+            that.properties.mu = Math.max(1, Number(v));
+            dirtyPlots = true;
+        }, { min: 1, step: 10 });
+        this.wLeyA = this.addWidget("number", "Parámetro A", 87.6, v => {
+            that.properties.leyA = Math.max(1, Number(v));
+            dirtyPlots = true;
+        }, { min: 1, step: 5 });
+        this.wVerTabla = this.addWidget("button", "📈 Ver Característica y Niveles", null, () => {
+            openQuantTableModal(that);
+        });
+
+        this.quantStats = {
+            mae: 0,
+            mse: 0,
+            rmse: 0,
+            sqnrDb: 0,
+            stepDelta: 0,
+            numSamples: 0,
+            hasInput: false,
+            levelCounts: {}
+        };
+
+        this.updateWidgetVisibility();
+        applyLightStyle(this, "#a5f3fc", "#ffffff");
+    }
+    NodoCuantizador.title = "Cuantizador A/D";
+
+    NodoCuantizador.prototype.updateWidgetVisibility = function() {
+        const tipo = this.properties.tipo || "Uniforme Midrise";
+        this.widgets = [this.wName, this.wNiveles, this.wTipo, this.wVmax];
+        if (tipo.includes("Ley μ")) {
+            this.widgets.push(this.wMu);
+            this.widgets.push(this.wVerTabla);
+            this.size = [305, 425];
+        } else if (tipo.includes("Ley A")) {
+            this.widgets.push(this.wLeyA);
+            this.widgets.push(this.wVerTabla);
+            this.size = [305, 425];
+        } else {
+            this.widgets.push(this.wVerTabla);
+            this.size = [305, 400];
+        }
+        this.setDirtyCanvas(true, true);
+    };
+
+    NodoCuantizador.prototype.getLevelsTable = function() {
+        const L = Math.max(2, Math.round(Number(this.properties.niveles || 8)));
+        const Vmax = Math.max(0.001, Number(this.properties.vMax || 1.0));
+        const tipo = this.properties.tipo || "Uniforme Midrise";
+        const isMidthread = tipo.includes("Midthread");
+        const isMuLaw = tipo.includes("Ley μ");
+        const isALaw = tipo.includes("Ley A");
+        const mu = Math.max(1, Number(this.properties.mu || 255));
+        const A = Math.max(1, Number(this.properties.leyA || 87.6));
+
+        const expandU = (uVal) => {
+            let yNorm = uVal;
+            if (isMuLaw) yNorm = muLawExpand(uVal, mu);
+            else if (isALaw) yNorm = aLawExpand(uVal, A);
+            return yNorm * Vmax;
+        };
+
+        const deltaU = 2.0 / L;
+        const rows = [];
+
+        for (let idx = 0; idx < L; idx++) {
+            let uQuant = 0;
+            let uLow = -1.0;
+            let uHigh = 1.0;
+
+            if (!isMidthread) {
+                uLow = -1.0 + idx * deltaU;
+                uHigh = -1.0 + (idx + 1) * deltaU;
+                uQuant = -1.0 + (idx + 0.5) * deltaU;
+            } else {
+                const kMin = -Math.floor(L / 2);
+                const k = kMin + idx;
+                uQuant = k * deltaU;
+                uLow = Math.max(-1.0, (k - 0.5) * deltaU);
+                uHigh = Math.min(1.0, (k + 0.5) * deltaU);
+            }
+
+            const yVal = expandU(uQuant);
+            const vLow = expandU(uLow);
+            const vHigh = expandU(uHigh);
+
+            rows.push({
+                index: idx,
+                voltage: yVal,
+                vLow: vLow,
+                vHigh: vHigh
+            });
+        }
+        return rows;
+    };
+
+    function muLawCompress(xNorm, mu) {
+        const s = Math.sign(xNorm);
+        const ax = Math.min(1.0, Math.abs(xNorm));
+        return s * (Math.log(1 + mu * ax) / Math.log(1 + mu));
+    }
+
+    function muLawExpand(yNorm, mu) {
+        const s = Math.sign(yNorm);
+        const ay = Math.min(1.0, Math.abs(yNorm));
+        return s * ((Math.pow(1 + mu, ay) - 1) / mu);
+    }
+
+    function aLawCompress(xNorm, A) {
+        const s = Math.sign(xNorm);
+        const ax = Math.min(1.0, Math.abs(xNorm));
+        const lnA = Math.log(A);
+        if (ax < 1.0 / A) {
+            return s * ((A * ax) / (1.0 + lnA));
+        } else {
+            return s * ((1.0 + Math.log(A * ax)) / (1.0 + lnA));
+        }
+    }
+
+    function aLawExpand(yNorm, A) {
+        const s = Math.sign(yNorm);
+        const ay = Math.min(1.0, Math.abs(yNorm));
+        const lnA = Math.log(A);
+        const thresh = 1.0 / (1.0 + lnA);
+        if (ay < thresh) {
+            return s * ((ay * (1.0 + lnA)) / A);
+        } else {
+            return s * (Math.exp(ay * (1.0 + lnA) - 1.0) / A);
+        }
+    }
+
+    NodoCuantizador.prototype.quantizeSample = function(xVal) {
+        const L = Math.max(2, Math.round(Number(this.properties.niveles || 8)));
+        const Vmax = Math.max(0.001, Number(this.properties.vMax || 1.0));
+        const tipo = this.properties.tipo || "Uniforme Midrise";
+        const isMidthread = tipo.includes("Midthread");
+        const isMuLaw = tipo.includes("Ley μ");
+        const isALaw = tipo.includes("Ley A");
+        const mu = Math.max(1, Number(this.properties.mu || 255));
+        const A = Math.max(1, Number(this.properties.leyA || 87.6));
+
+        let xClamped = Math.max(-Vmax, Math.min(Vmax, xVal));
+        let xNorm = xClamped / Vmax;
+
+        let u = xNorm;
+        if (isMuLaw) u = muLawCompress(xNorm, mu);
+        else if (isALaw) u = aLawCompress(xNorm, A);
+
+        const deltaU = 2.0 / L;
+        let idx = 0;
+        let uQuant = 0;
+
+        if (!isMidthread) {
+            idx = Math.floor((u + 1.0) / deltaU);
+            idx = Math.max(0, Math.min(L - 1, idx));
+            uQuant = -1.0 + (idx + 0.5) * deltaU;
+        } else {
+            let k = Math.round(u / deltaU);
+            const kMin = -Math.floor(L / 2);
+            const kMax = Math.ceil(L / 2) - 1;
+            k = Math.max(kMin, Math.min(kMax, k));
+            idx = k - kMin;
+            uQuant = k * deltaU;
+        }
+
+        let yNorm = uQuant;
+        if (isMuLaw) yNorm = muLawExpand(uQuant, mu);
+        else if (isALaw) yNorm = aLawExpand(uQuant, A);
+
+        const xQuant = yNorm * Vmax;
+        return {
+            qVal: xQuant,
+            levelIndex: idx,
+            error: xVal - xQuant
+        };
+    };
+
+    NodoCuantizador.prototype.onExecute = function() {
+        let in1 = this.getInputData(0);
+        if (!in1) {
+            this.quantStats.hasInput = false;
+            this.setOutputData(0, null);
+            return;
+        }
+
+        const L = Math.max(2, Math.round(Number(this.properties.niveles || 8)));
+        const Vmax = Math.max(0.001, Number(this.properties.vMax || 1.0));
+        const { dt, tMin } = getCurrentTimeVector();
+        const nombre = this.properties.nombre || "xq(t)";
+
+        let absErrSum = 0;
+        let sqErrSum = 0;
+        let sqSigSum = 0;
+        let sampleCount = 0;
+
+        let quantizedIndices = [];
+        let sampleTimes = [];
+        let quantizedSamples = [];
+        let levelCounts = {};
+        let outValues = new Array(N).fill(0);
+        let stemX = null;
+        let stemY = null;
+
+        if (in1.isSampledSignal && Array.isArray(in1.sampleInstants)) {
+            stemX = [];
+            stemY = [];
+            for (let i = 0; i < in1.sampleInstants.length; i++) {
+                const s = in1.sampleInstants[i];
+                const res = this.quantizeSample(s.v);
+
+                stemX.push(s.t);
+                stemY.push(res.qVal);
+                quantizedIndices.push(res.levelIndex);
+                sampleTimes.push(s.t);
+                quantizedSamples.push({ t: s.t, v: res.qVal, index: res.levelIndex });
+                levelCounts[res.levelIndex] = (levelCounts[res.levelIndex] || 0) + 1;
+
+                let mappedIdx = Math.round((s.t - tMin) / dt);
+                if (mappedIdx >= 0 && mappedIdx < N) {
+                    outValues[mappedIdx] = res.qVal;
+                }
+
+                absErrSum += Math.abs(res.error);
+                sqErrSum += res.error * res.error;
+                sqSigSum += s.v * s.v;
+                sampleCount++;
+            }
+        } else if (in1.discrete && Array.isArray(in1.stemX) && Array.isArray(in1.stemY)) {
+            stemX = [...in1.stemX];
+            stemY = [];
+            for (let i = 0; i < in1.stemX.length; i++) {
+                const val = in1.stemY[i];
+                const res = this.quantizeSample(val);
+
+                stemY.push(res.qVal);
+                quantizedIndices.push(res.levelIndex);
+                sampleTimes.push(in1.stemX[i]);
+                quantizedSamples.push({ t: in1.stemX[i], v: res.qVal, index: res.levelIndex });
+                levelCounts[res.levelIndex] = (levelCounts[res.levelIndex] || 0) + 1;
+
+                let mappedIdx = Math.round((in1.stemX[i] - tMin) / dt);
+                if (mappedIdx >= 0 && mappedIdx < N) {
+                    outValues[mappedIdx] = res.qVal;
+                }
+
+                absErrSum += Math.abs(res.error);
+                sqErrSum += res.error * res.error;
+                sqSigSum += val * val;
+                sampleCount++;
+            }
+        } else if (Array.isArray(in1.values)) {
+            for (let i = 0; i < N; i++) {
+                const val = in1.values[i];
+                const res = this.quantizeSample(val);
+                outValues[i] = res.qVal;
+                quantizedIndices.push(res.levelIndex);
+                levelCounts[res.levelIndex] = (levelCounts[res.levelIndex] || 0) + 1;
+
+                absErrSum += Math.abs(res.error);
+                sqErrSum += res.error * res.error;
+                sqSigSum += val * val;
+                sampleCount++;
+            }
+        }
+
+        const mae = sampleCount > 0 ? absErrSum / sampleCount : 0;
+        const mse = sampleCount > 0 ? sqErrSum / sampleCount : 0;
+        const rmse = Math.sqrt(mse);
+        const sqnrDb = (mse > 1e-12 && sqSigSum > 1e-12)
+            ? 10 * Math.log10((sqSigSum / sampleCount) / mse)
+            : (mse <= 1e-12 ? 99.9 : 0);
+
+        this.quantStats = {
+            mae: mae,
+            mse: mse,
+            rmse: rmse,
+            sqnrDb: sqnrDb,
+            stepDelta: (2 * Vmax) / L,
+            numSamples: sampleCount,
+            hasInput: true,
+            levelCounts: levelCounts
+        };
+
+        this.setOutputData(0, {
+            name: nombre,
+            values: outValues,
+            discrete: Boolean(in1.discrete),
+            isSampledSignal: Boolean(in1.isSampledSignal),
+            fs_sample: in1.fs_sample,
+            sampledTs: in1.sampledTs,
+            stemX: stemX,
+            stemY: stemY,
+            sampleInstants: quantizedSamples,
+            quantMeta: {
+                levels: L,
+                indices: quantizedIndices,
+                sampleTimes: sampleTimes,
+                fs_sample: in1.fs_sample || (in1.sampledTs ? 1 / in1.sampledTs : null),
+                sampledTs: in1.sampledTs || null,
+                t_start: sampleTimes.length > 0 ? sampleTimes[0] : 0,
+                vMax: Vmax,
+                tipo: this.properties.tipo,
+                mae: mae,
+                mse: mse,
+                levelsTable: this.getLevelsTable(),
+                levelCounts: levelCounts
+            },
+            dt: dt
+        });
+    };
+
+    NodoCuantizador.prototype.onDrawForeground = function(ctx) {
+        if (this.flags.collapsed) return;
+        const w = this.size[0];
+        const isNonUniform = (this.properties.tipo || "").includes("Ley");
+        const startY = isNonUniform ? 186 : 162;
+        const boxW = w - 20;
+        const boxH = 228;
+        const boxX = 10;
+        const Vmax = Math.max(0.001, Number(this.properties.vMax || 1.0));
+
+        ctx.save();
+        ctx.fillStyle = "#0f172a";
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(boxX, startY, boxW, boxH, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = "bold 9.5px 'Segoe UI', monospace";
+        ctx.fillStyle = "#22d3ee";
+        ctx.fillText("CURVA SALIDA y_q(x) Y ERROR e_q(x)", boxX + 10, startY + 15);
+
+        ctx.strokeStyle = "#1e293b";
+        ctx.beginPath();
+        ctx.moveTo(boxX, startY + 20);
+        ctx.lineTo(boxX + boxW, startY + 20);
+        ctx.stroke();
+
+        // Gráfica 1 (Izq): Característica de transferencia y_q(x) vs x (escalera de niveles)
+        // Gráfica 2 (Der): Error de cuantización e_q(x) = x - y_q(x) vs x
+        const pad = 8;
+        const gap = 8;
+        const plotY = startY + 26;
+        const plotH = 92;
+        const plotW = (boxW - 2 * pad - gap) / 2;
+        const p1X = boxX + pad;
+        const p2X = p1X + plotW + gap;
+
+        const numPts = 140;
+        const xArr = new Array(numPts);
+        const yArr = new Array(numPts);
+        const eArr = new Array(numPts);
+        let maxAbsErr = 1e-4;
+
+        for (let i = 0; i < numPts; i++) {
+            const xv = -Vmax + (2 * Vmax * i) / (numPts - 1);
+            const res = this.quantizeSample(xv);
+            xArr[i] = xv;
+            yArr[i] = res.qVal;
+            eArr[i] = res.error;
+            if (Math.abs(res.error) > maxAbsErr) maxAbsErr = Math.abs(res.error);
+        }
+        maxAbsErr = Math.max(maxAbsErr * 1.15, (2 * Vmax) / Math.max(2, this.properties.niveles || 8));
+
+        // --- Panel Izquierdo: Escalera y_q(x) ---
+        ctx.fillStyle = "#020617";
+        ctx.strokeStyle = "#1e293b";
+        ctx.beginPath();
+        ctx.roundRect(p1X, plotY, plotW, plotH, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        const c1x = p1X + plotW / 2;
+        const c1y = plotY + plotH / 2;
+        ctx.strokeStyle = "#334155";
+        ctx.beginPath();
+        ctx.moveTo(p1X + 4, c1y); ctx.lineTo(p1X + plotW - 4, c1y);
+        ctx.moveTo(c1x, plotY + 4); ctx.lineTo(c1x, plotY + plotH - 4);
+        ctx.stroke();
+
+        // Referencia lineal ideal y = x
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(p1X + 6, plotY + plotH - 6);
+        ctx.lineTo(p1X + plotW - 6, plotY + 6);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Curva escalonada de niveles de salida
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        for (let i = 0; i < numPts; i++) {
+            const px = p1X + 6 + ((xArr[i] + Vmax) / (2 * Vmax)) * (plotW - 12);
+            const py = plotY + plotH - 6 - ((yArr[i] + Vmax) / (2 * Vmax)) * (plotH - 12);
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+
+        ctx.font = "8px 'Segoe UI', sans-serif";
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText("Salida y_q(x)", p1X + 5, plotY + 10);
+
+        // --- Panel Derecho: Error e_q(x) = x - y_q(x) ---
+        ctx.fillStyle = "#020617";
+        ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(p2X, plotY, plotW, plotH, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        const c2x = p2X + plotW / 2;
+        const c2y = plotY + plotH / 2;
+        ctx.strokeStyle = "#334155";
+        ctx.beginPath();
+        ctx.moveTo(p2X + 4, c2y); ctx.lineTo(p2X + plotW - 4, c2y);
+        ctx.moveTo(c2x, plotY + 4); ctx.lineTo(c2x, plotY + plotH - 4);
+        ctx.stroke();
+
+        ctx.strokeStyle = "#f97316";
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        for (let i = 0; i < numPts; i++) {
+            const px = p2X + 6 + ((xArr[i] + Vmax) / (2 * Vmax)) * (plotW - 12);
+            const py = c2y - (eArr[i] / maxAbsErr) * (plotH * 0.42);
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText("Error e_q(x)", p2X + 5, plotY + 10);
+
+        // Métricas de error y lista resumida de niveles (sin códigos binarios)
+        const infoY = plotY + plotH + 14;
+        const st = this.quantStats;
+        ctx.font = "9.5px 'Segoe UI', monospace";
+
+        if (!st || !st.hasInput) {
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillText("Error Medio |e|: — (conecta xs(t))", boxX + 10, infoY);
+        } else {
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillText("Error Medio |e|:", boxX + 10, infoY);
+            ctx.fillStyle = "#4ade80";
+            ctx.font = "bold 9.5px 'Segoe UI', monospace";
+            let sqnrTxt = st.sqnrDb > 90 ? ">90dB" : `${st.sqnrDb.toFixed(1)}dB`;
+            ctx.fillText(`${st.mae.toFixed(4)}V (SQNR ${sqnrTxt})`, boxX + 115, infoY);
+        }
+
+        const tableY = infoY + 8;
+        ctx.strokeStyle = "#1e293b";
+        ctx.beginPath();
+        ctx.moveTo(boxX, tableY);
+        ctx.lineTo(boxX + boxW, tableY);
+        ctx.stroke();
+
+        ctx.font = "bold 8.5px 'Segoe UI', monospace";
+        ctx.fillStyle = "#38bdf8";
+        ctx.fillText("Nivel    Tensión y_q      Intervalo Entrada", boxX + 10, tableY + 12);
+
+        const levelsTable = this.getLevelsTable();
+        const maxPreview = 4;
+        const stepShow = levelsTable.length > maxPreview ? Math.ceil(levelsTable.length / maxPreview) : 1;
+        const previewRows = [];
+        for (let i = 0; i < levelsTable.length && previewRows.length < maxPreview; i += stepShow) {
+            previewRows.push(levelsTable[i]);
+        }
+        if (levelsTable.length > maxPreview && previewRows[previewRows.length - 1].index !== levelsTable.length - 1) {
+            previewRows[previewRows.length - 1] = levelsTable[levelsTable.length - 1];
+        }
+
+        ctx.font = "8.5px 'Segoe UI', monospace";
+        previewRows.forEach((row, idx) => {
+            const ry = tableY + 25 + idx * 14;
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillText(`Niv ${row.index}`, boxX + 10, ry);
+
+            ctx.fillStyle = "#f8fafc";
+            ctx.fillText(`${row.voltage >= 0 ? "+" : ""}${row.voltage.toFixed(3)} V`, boxX + 58, ry);
+
+            ctx.fillStyle = "#cbd5e1";
+            ctx.fillText(`[${row.vLow.toFixed(2)}, ${row.vHigh.toFixed(2)}]V`, boxX + 138, ry);
+        });
+
+        ctx.restore();
+    };
+    LiteGraph.registerNodeType("Telecom/Cuantizador", NodoCuantizador);
+
+    function openQuantTableModal(quantNode) {
+        if (!quantNode || typeof quantNode.getLevelsTable !== "function") return;
+        const modal = document.getElementById("quant-table-modal");
+        const titleEl = document.getElementById("qmodal-title");
+        const metaEl = document.getElementById("qmodal-meta");
+        const chartsEl = document.getElementById("qmodal-charts");
+        const thead = document.getElementById("qmodal-thead");
+        const tbody = document.getElementById("qmodal-tbody");
+
+        const L = Math.max(2, Math.round(Number(quantNode.properties.niveles || 8)));
+        const Vmax = Math.max(0.001, Number(quantNode.properties.vMax || 1.0));
+        const rows = quantNode.getLevelsTable();
+        const counts = (quantNode.quantStats && quantNode.quantStats.levelCounts) ? quantNode.quantStats.levelCounts : {};
+
+        titleEl.textContent = `📊 Niveles y Característica del Cuantizador — ${quantNode.properties.nombre || "Cuantizador"}`;
+        metaEl.innerHTML = `
+            <span><b>Tipo:</b> ${quantNode.properties.tipo}</span>
+            <span><b>Niveles (L):</b> ${L}</span>
+            <span><b>Rango:</b> ±${Vmax.toFixed(2)} V</span>
+            <span><b>Error Medio |e|:</b> ${(quantNode.quantStats ? quantNode.quantStats.mae : 0).toFixed(4)} V</span>
+        `;
+
+        chartsEl.style.display = "grid";
+        thead.innerHTML = `
+            <tr>
+                <th>Nivel (k)</th>
+                <th>Tensión Reconst. y_q (V)</th>
+                <th>Intervalo Entrada (V)</th>
+                <th>Muestras</th>
+            </tr>
+        `;
+
+        tbody.innerHTML = rows.slice().reverse().map(r => {
+            const hitCount = counts[r.index] || 0;
+            const rowClass = hitCount > 0 ? "active-level" : "";
+            return `
+                <tr class="${rowClass}">
+                    <td>Nivel ${r.index}</td>
+                    <td><b>${r.voltage >= 0 ? "+" : ""}${r.voltage.toFixed(4)} V</b></td>
+                    <td>[${r.vLow.toFixed(3)} V, ${r.vHigh.toFixed(3)} V]</td>
+                    <td>${hitCount > 0 ? hitCount + " muestra(s)" : "—"}</td>
+                </tr>
+            `;
+        }).join("");
+
+        modal.classList.add("open");
+
+        const numPts = 400;
+        const xArr = new Array(numPts);
+        const yArr = new Array(numPts);
+        const eArr = new Array(numPts);
+        for (let i = 0; i < numPts; i++) {
+            const xv = -Vmax + (2 * Vmax * i) / (numPts - 1);
+            const res = quantNode.quantizeSample(xv);
+            xArr[i] = xv;
+            yArr[i] = res.qVal;
+            eArr[i] = res.error;
+        }
+
+        Plotly.react('qmodal-plot-transfer', [
+            {
+                x: [-Vmax, Vmax],
+                y: [-Vmax, Vmax],
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#94a3b8', width: 1.2, dash: 'dash' },
+                name: 'Ideal y=x'
+            },
+            {
+                x: xArr,
+                y: yArr,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#0284c7', width: 2 },
+                name: 'Salida y_q(x)'
+            }
+        ], {
+            title: { text: '<b>Niveles de salida y_q según entrada x</b>', font: { size: 11 } },
+            xaxis: { title: 'Entrada x (V)', gridcolor: '#e2e8f0' },
+            yaxis: { title: 'Salida y_q (V)', gridcolor: '#e2e8f0' },
+            margin: { t: 30, b: 34, l: 44, r: 12 },
+            showlegend: false,
+            paper_bgcolor: '#ffffff',
+            plot_bgcolor: '#ffffff'
+        }, { responsive: true, displayModeBar: false });
+
+        Plotly.react('qmodal-plot-error', [
+            {
+                x: xArr,
+                y: eArr,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#ea580c', width: 1.8 },
+                name: 'Error e_q(x)'
+            }
+        ], {
+            title: { text: '<b>Error de cuantización e_q(x) = x − y_q(x)</b>', font: { size: 11 } },
+            xaxis: { title: 'Entrada x (V)', gridcolor: '#e2e8f0' },
+            yaxis: { title: 'Error (V)', gridcolor: '#e2e8f0' },
+            margin: { t: 30, b: 34, l: 48, r: 12 },
+            showlegend: false,
+            paper_bgcolor: '#ffffff',
+            plot_bgcolor: '#ffffff'
+        }, { responsive: true, displayModeBar: false });
+    }
+
+    function closeQuantTableModal() {
+        document.getElementById("quant-table-modal").classList.remove("open");
+    }
+
+
+    // --- CODIFICADOR PCM (n BITS -> SEÑAL DIGITAL + VALIDACIÓN DE NIVELES) ---
+    function NodoCodificador() {
+        this.addInput("xq(t)", "signal");
+        this.addOutput("d_pcm(t)", "signal");
+        this.properties = {
+            nombre: "d_pcm(t)",
+            bitsPorMuestra: 3,
+            codigoLinea: "NRZ Unipolar (0/1)",
+            amp: 1.0,
+            rbManual: 0
+        };
+
+        const that = this;
+        this.addWidget("text", "Etiqueta", "d_pcm(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
+        this.addWidget("number", "N.º Bits (n)", 3, v => {
+            that.properties.bitsPorMuestra = Math.max(1, Math.min(16, Math.round(Number(v))));
+            dirtyPlots = true;
+        }, { min: 1, max: 16, step: 1 });
+        this.addWidget("combo", "Código Línea", "NRZ Unipolar (0/1)", v => {
+            that.properties.codigoLinea = v;
+            dirtyPlots = true;
+        }, { values: ["NRZ Unipolar (0/1)", "NRZ Polar (-1/+1)", "Manchester"] });
+        this.addWidget("number", "Amplitud (V)", 1.0, v => {
+            that.properties.amp = Number(v);
+            dirtyPlots = true;
+        }, { step: 0.1 });
+        this.addWidget("button", "📋 Ver Tabla Completa Niveles → Código", null, () => {
+            that.openEncoderTable();
+        });
+
+        this.encoderStatus = {
+            hasError: false,
+            errorMessage: "",
+            levels: 0,
+            bits: 3,
+            capacity: 8,
+            bitStream: "",
+            rb: 0,
+            hasInput: false,
+            levelsTable: null,
+            levelCounts: {}
+        };
+
+        this.size = [315, 345];
+        applyLightStyle(this, "#7dd3fc", "#ffffff");
+    }
+    NodoCodificador.title = "Codificador PCM";
+
+    NodoCodificador.prototype.openEncoderTable = function() {
+        const nBits = Math.max(1, Math.min(16, Math.round(Number(this.properties.bitsPorMuestra || 3))));
+        const modal = document.getElementById("quant-table-modal");
+        const titleEl = document.getElementById("qmodal-title");
+        const metaEl = document.getElementById("qmodal-meta");
+        const chartsEl = document.getElementById("qmodal-charts");
+        const thead = document.getElementById("qmodal-thead");
+        const tbody = document.getElementById("qmodal-tbody");
+
+        chartsEl.style.display = "none";
+        thead.innerHTML = `
+            <tr>
+                <th>Nivel (k)</th>
+                <th>Código Binario Asociado</th>
+                <th>Tensión Reconst. y_q (V)</th>
+                <th>Intervalo Decisión (V)</th>
+                <th>Muestras</th>
+            </tr>
+        `;
+
+        const st = this.encoderStatus;
+        if (!st || !st.hasInput || !st.levelsTable) {
+            titleEl.textContent = `📋 Tabla de Codificación PCM (${nBits} bits)`;
+            metaEl.innerHTML = `<span>Conecta un Cuantizador A/D para ver los niveles y su palabra binaria de ${nBits} bits.</span>`;
+            tbody.innerHTML = "";
+            modal.classList.add("open");
+            return;
+        }
+
+        const counts = st.levelCounts || {};
+        titleEl.textContent = `📋 Tabla de Niveles y Palabras Binarias PCM (${nBits} bits) — ${this.properties.nombre || "Codificador"}`;
+        metaEl.innerHTML = `
+            <span><b>Niveles entrada (L):</b> ${st.levels}</span>
+            <span><b>Resolución:</b> ${nBits} bits (2^${nBits} = ${st.capacity} códigos)</span>
+            <span><b>Tasa binaria:</b> ${st.rb.toFixed(1)} bps</span>
+        `;
+
+        tbody.innerHTML = st.levelsTable.slice().reverse().map(r => {
+            const word = st.hasError
+                ? "INSUFICIENTE"
+                : r.index.toString(2).padStart(nBits, "0");
+            const hitCount = counts[r.index] || 0;
+            const rowClass = hitCount > 0 ? "active-level" : "";
+            return `
+                <tr class="${rowClass}">
+                    <td>Nivel ${r.index}</td>
+                    <td><span class="bin-badge">${word}</span></td>
+                    <td>${r.voltage >= 0 ? "+" : ""}${r.voltage.toFixed(4)} V</td>
+                    <td>[${r.vLow.toFixed(3)} V, ${r.vHigh.toFixed(3)} V]</td>
+                    <td>${hitCount > 0 ? hitCount + " muestra(s)" : "—"}</td>
+                </tr>
+            `;
+        }).join("");
+
+        modal.classList.add("open");
+    };
+
+    NodoCodificador.prototype.onExecute = function() {
+        let in1 = this.getInputData(0);
+        const nBits = Math.max(1, Math.min(16, Math.round(Number(this.properties.bitsPorMuestra || 3))));
+        const capacity = Math.pow(2, nBits);
+
+        if (!in1) {
+            this.boxcolor = null;
+            this.encoderStatus = {
+                hasError: false,
+                errorMessage: "",
+                levels: 0,
+                bits: nBits,
+                capacity: capacity,
+                bitStream: "",
+                rb: 0,
+                hasInput: false,
+                levelsTable: null,
+                levelCounts: {}
+            };
+            this.setOutputData(0, null);
+            return;
+        }
+
+        let qMeta = in1.quantMeta || null;
+        let detectedLevels = qMeta ? qMeta.levels : 2;
+        let indices = qMeta ? qMeta.indices : null;
+        let sampleTimes = qMeta ? qMeta.sampleTimes : null;
+        let fsSample = qMeta ? qMeta.fs_sample : (in1.fs_sample || null);
+        let levelsTable = qMeta ? qMeta.levelsTable : null;
+        let levelCounts = qMeta ? qMeta.levelCounts : {};
+
+        if (!qMeta) {
+            const srcArr = (in1.discrete && Array.isArray(in1.stemY)) ? in1.stemY : (in1.values || []);
+            const uniqueSet = new Set(srcArr.map(v => Number(v.toFixed(5))));
+            detectedLevels = Math.max(2, uniqueSet.size);
+            const sortedLevels = Array.from(uniqueSet).sort((a, b) => a - b);
+            indices = srcArr.map(v => Math.max(0, sortedLevels.indexOf(Number(v.toFixed(5)))));
+            sampleTimes = (in1.discrete && Array.isArray(in1.stemX)) ? in1.stemX : null;
+        }
+
+        if (capacity < detectedLevels) {
+            const minBitsReq = Math.ceil(Math.log2(detectedLevels));
+            this.boxcolor = "#ef4444";
+            this.encoderStatus = {
+                hasError: true,
+                errorMessage: `ERROR: ${nBits} bit(s) solo codifican 2^${nBits}=${capacity} niveles, pero la señal tiene L=${detectedLevels} niveles (mínimo ${minBitsReq} bits).`,
+                levels: detectedLevels,
+                bits: nBits,
+                capacity: capacity,
+                bitStream: "",
+                rb: 0,
+                hasInput: true,
+                levelsTable: levelsTable,
+                levelCounts: levelCounts
+            };
+            this.setOutputData(0, null);
+            return;
+        }
+
+        this.boxcolor = null;
+
+        let bitWords = [];
+        let fullBitStr = "";
+        if (Array.isArray(indices)) {
+            for (let i = 0; i < indices.length; i++) {
+                let idx = Math.max(0, Math.min(capacity - 1, Math.round(indices[i])));
+                let word = idx.toString(2).padStart(nBits, "0");
+                bitWords.push(word);
+                fullBitStr += word;
+            }
+        }
+
+        const { t, dt, tMin, tMax } = getCurrentTimeVector();
+        const codigo = this.properties.codigoLinea || "NRZ Unipolar (0/1)";
+        const amp = Number(this.properties.amp !== undefined ? this.properties.amp : 1.0);
+        const nombre = this.properties.nombre || "d_pcm(t)";
+
+        let rb = 2.0;
+        let tStart = 0.0;
+        if (fsSample && fsSample > 0) {
+            rb = nBits * fsSample;
+            tStart = (sampleTimes && sampleTimes.length > 0) ? sampleTimes[0] : 0.0;
+        } else if (sampleTimes && sampleTimes.length >= 2) {
+            let tsEst = Math.max(1e-4, sampleTimes[1] - sampleTimes[0]);
+            rb = nBits / tsEst;
+            tStart = sampleTimes[0];
+        } else {
+            const totalDuration = Math.max(0.1, tMax - tMin);
+            rb = Math.max(1, fullBitStr.length) / totalDuration;
+            tStart = tMin;
+        }
+
+        const Tb = 1.0 / rb;
+        const numBitsTotal = fullBitStr.length;
+        const tEnd = tStart + numBitsTotal * Tb;
+
+        let outValues = t.map(time => {
+            if (numBitsTotal === 0 || time < tStart || time >= tEnd) return 0;
+            let bitIdx = Math.floor((time - tStart) / Tb);
+            if (bitIdx >= numBitsTotal) bitIdx = numBitsTotal - 1;
+            let bit = fullBitStr[bitIdx] === "1" ? 1 : 0;
+            let posInBit = ((time - tStart) % Tb) / Tb;
+
+            if (codigo === "NRZ Unipolar (0/1)") {
+                return bit ? amp : 0;
+            }
+            if (codigo === "NRZ Polar (-1/+1)") {
+                return bit ? amp : -amp;
+            }
+            if (codigo === "Manchester") {
+                return (bit === 1) ? (posInBit < 0.5 ? amp : -amp) : (posInBit < 0.5 ? -amp : amp);
+            }
+            return 0;
+        });
+
+        this.encoderStatus = {
+            hasError: false,
+            errorMessage: "",
+            levels: detectedLevels,
+            bits: nBits,
+            capacity: capacity,
+            bitStream: fullBitStr,
+            bitWords: bitWords,
+            rb: rb,
+            hasInput: true,
+            levelsTable: levelsTable,
+            levelCounts: levelCounts
+        };
+
+        this.setOutputData(0, {
+            name: nombre,
+            rawBits: fullBitStr,
+            values: outValues,
+            discrete: false,
+            isPeriodic: false,
+            Rb: rb,
+            Tb: Tb,
+            t_start: tStart,
+            dt: dt
+        });
+    };
+
+    NodoCodificador.prototype.onDrawForeground = function(ctx) {
+        if (this.flags.collapsed) return;
+        const w = this.size[0];
+        const startY = 162;
+        const boxW = w - 20;
+        const boxH = 172;
+        const boxX = 10;
+
+        ctx.save();
+        const st = this.encoderStatus;
+
+        if (st && st.hasError) {
+            ctx.fillStyle = "#450a0a";
+            ctx.strokeStyle = "#ef4444";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(boxX, startY, boxW, boxH, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.font = "bold 9.5px 'Segoe UI', monospace";
+            ctx.fillStyle = "#fca5a5";
+            ctx.fillText("⚠ ERROR DE CODIFICACIÓN PCM", boxX + 10, startY + 18);
+
+            ctx.font = "9.5px 'Segoe UI', sans-serif";
+            ctx.fillStyle = "#fecaca";
+            const minBits = Math.ceil(Math.log2(Math.max(2, st.levels)));
+            ctx.fillText(`Bits insuficientes: n = ${st.bits} (2^${st.bits} = ${st.capacity} códigos)`, boxX + 10, startY + 42);
+            ctx.fillText(`El cuantizador tiene L = ${st.levels} niveles.`, boxX + 10, startY + 62);
+            ctx.fillStyle = "#fde047";
+            ctx.font = "bold 9.5px 'Segoe UI', sans-serif";
+            ctx.fillText(`Solución: Selecciona al menos n = ${minBits} bits.`, boxX + 10, startY + 86);
+        } else {
+            ctx.fillStyle = "#0f172a";
+            ctx.strokeStyle = "#334155";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(boxX, startY, boxW, boxH, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.font = "bold 9.5px 'Segoe UI', monospace";
+            ctx.fillStyle = "#38bdf8";
+            ctx.fillText("TABLA DE CODIFICACIÓN (NIVEL → BINARIO)", boxX + 10, startY + 15);
+
+            ctx.strokeStyle = "#1e293b";
+            ctx.beginPath();
+            ctx.moveTo(boxX, startY + 20);
+            ctx.lineTo(boxX + boxW, startY + 20);
+            ctx.stroke();
+
+            ctx.font = "9px 'Segoe UI', monospace";
+            if (!st || !st.hasInput) {
+                ctx.fillStyle = "#94a3b8";
+                ctx.fillText("Conecta la salida del Cuantizador", boxX + 10, startY + 44);
+                ctx.fillText("para asignar códigos binarios a", boxX + 10, startY + 60);
+                ctx.fillText("cada nivel y generar la señal PCM.", boxX + 10, startY + 76);
+            } else {
+                ctx.fillStyle = "#94a3b8";
+                ctx.fillText("Tasa Rb:", boxX + 10, startY + 34);
+                ctx.fillStyle = "#4ade80";
+                ctx.fillText(`${st.rb.toFixed(1)} bps (${st.bits} b/muestra)`, boxX + 62, startY + 34);
+
+                ctx.fillStyle = "#94a3b8";
+                ctx.fillText("Trama:", boxX + 10, startY + 48);
+                ctx.fillStyle = "#f8fafc";
+                const previewBits = st.bitStream.length > 26
+                    ? st.bitStream.slice(0, 26) + "..."
+                    : (st.bitStream || "—");
+                ctx.fillText(previewBits, boxX + 52, startY + 48);
+
+                // Tabla integrada Nivel -> Tensión -> Código Binario
+                const tblY = startY + 56;
+                ctx.strokeStyle = "#1e293b";
+                ctx.beginPath();
+                ctx.moveTo(boxX, tblY);
+                ctx.lineTo(boxX + boxW, tblY);
+                ctx.stroke();
+
+                ctx.font = "bold 8.5px 'Segoe UI', monospace";
+                ctx.fillStyle = "#38bdf8";
+                ctx.fillText("Nivel    Tensión y_q      Código Binario", boxX + 10, tblY + 12);
+
+                const levelsList = st.levelsTable || [];
+                const maxRows = 6;
+                const step = levelsList.length > maxRows ? Math.ceil(levelsList.length / maxRows) : 1;
+                const shown = [];
+                for (let i = 0; i < levelsList.length && shown.length < maxRows; i += step) {
+                    shown.push(levelsList[i]);
+                }
+                if (levelsList.length > maxRows && shown[shown.length - 1].index !== levelsList.length - 1) {
+                    shown[shown.length - 1] = levelsList[levelsList.length - 1];
+                }
+
+                ctx.font = "8.8px 'Segoe UI', monospace";
+                shown.forEach((row, idx) => {
+                    const ry = tblY + 25 + idx * 14;
+                    const code = row.index.toString(2).padStart(st.bits, "0");
+
+                    ctx.fillStyle = "#94a3b8";
+                    ctx.fillText(`Niv ${row.index}`, boxX + 10, ry);
+
+                    ctx.fillStyle = "#cbd5e1";
+                    ctx.fillText(`${row.voltage >= 0 ? "+" : ""}${row.voltage.toFixed(3)} V`, boxX + 60, ry);
+
+                    ctx.fillStyle = "#38bdf8";
+                    ctx.font = "bold 9px 'Segoe UI', monospace";
+                    ctx.fillText(code, boxX + 150, ry);
+                    ctx.font = "8.8px 'Segoe UI', monospace";
+                });
+            }
+        }
+
+        ctx.restore();
+    };
+    LiteGraph.registerNodeType("Telecom/Codificador", NodoCodificador);
+
+
     // --- MODULADOR AM ---
     function NodoModuladorAM() {
         this.addInput("m(t)", "signal");
@@ -1487,7 +2592,7 @@
 
         const { tipo, fc, Ac, nombre } = this.properties;
         const baudios = Math.max(0.1, Number(this.properties.baudios || 2));
-        const Ts = 1.0 / baudios; // Duración exacta de cada símbolo en segundos según los baudios
+        const Ts = 1.0 / baudios;
         const kBits = (tipo === "4-QAM (QPSK)") ? 2 : 4;
         const { t, dt } = getCurrentTimeVector();
 
@@ -1565,7 +2670,6 @@
         const radius = (plotSize - 26) / 2;
 
         ctx.save();
-        // Fondo cuadrícula constelación
         ctx.fillStyle = "#0f172a";
         ctx.strokeStyle = "#334155";
         ctx.lineWidth = 1;
@@ -1574,7 +2678,6 @@
         ctx.fill();
         ctx.stroke();
 
-        // Ejes I y Q
         ctx.strokeStyle = "#475569";
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -1584,7 +2687,6 @@
         ctx.lineTo(cx, cy + radius + 5);
         ctx.stroke();
 
-        // Etiquetas Ejes
         ctx.fillStyle = "#94a3b8";
         ctx.font = "9px 'Segoe UI', sans-serif";
         ctx.fillText("I", cx + radius - 2, cy - 4);
@@ -1593,7 +2695,6 @@
         const is16 = this.properties.tipo === "16-QAM";
         const maxNorm = is16 ? (3 / Math.sqrt(10)) : 1.0;
 
-        // Puntos ideales de la constelación de referencia
         ctx.fillStyle = "rgba(148, 163, 184, 0.4)";
         if (!is16) {
             [-1, 1].forEach(xi => {
@@ -1618,13 +2719,11 @@
             });
         }
 
-        // Dibujar símbolos transmitidos
         const syms = this.modSymbols || [];
         syms.forEach(s => {
             let px = cx + (s.I / maxNorm) * radius * 0.85;
             let py = cy - (s.Q / maxNorm) * radius * 0.85;
 
-            // Marcador
             ctx.fillStyle = "#38bdf8";
             ctx.strokeStyle = "#ffffff";
             ctx.lineWidth = 1.2;
@@ -1633,7 +2732,6 @@
             ctx.fill();
             ctx.stroke();
 
-            // Etiqueta del símbolo
             ctx.fillStyle = "#f8fafc";
             ctx.font = "bold 8.5px 'Segoe UI', monospace";
             ctx.fillText(`${s.bits}`, px + 6, py - 3);
@@ -1650,9 +2748,9 @@
         this.addOutput("Out", "signal");
         this.properties = { 
             nombre: "Canal",
-            atenuacion: 0.8,    // Factor de ganancia (0.0 a 2.0)
-            ruido: 0.15,        // Desviación estándar del ruido Gaussiano (sigma)
-            retardo: 0.0        // Retardo temporal en segundos
+            atenuacion: 0.8,
+            ruido: 0.15,
+            retardo: 0.0
         };
 
         const that = this;
@@ -1666,7 +2764,6 @@
     }
     NodoCanal.title = "Canal (Aten/Ruido)";
 
-    // Generador Box-Muller pseudoaleatorio de ruido blanco gaussiano reproducible por frame
     function gaussianRandom(mean = 0, stdev = 1) {
         let u1 = 1.0 - Math.random();
         let u2 = 1.0 - Math.random();
@@ -1710,12 +2807,10 @@
                 }
             }
 
-            // Aplicar ganancia/atenuación y suma de Ruido Blanco Gaussiano Aditivo (AWGN)
             let noise = sigma > 0 ? gaussianRandom(0, sigma) : 0;
             outValues[i] = alpha * val + noise;
         }
 
-        // Propagar metadatos con escalado de amplitud y retardo
         let updatedMeta = null;
         if (in1.qamMeta) {
             updatedMeta = { ...in1.qamMeta };
@@ -1767,7 +2862,6 @@
     }
     NodoDemoduladorQAM.title = "Demodulador QAM";
 
-    // Propagar metadatos QAM a través de sumadores/amplificadores/canales si no estaban presentes
     function findQamMetaInSignal(sig) {
         if (!sig) return null;
         if (sig.qamMeta) return sig.qamMeta;
@@ -1998,7 +3092,6 @@
         const syms = this.decodedSymbols || [];
         const w = this.size[0];
         
-        // 1. Constelación I-Q gráfica
         const plotY = 195;
         const plotSize = 145;
         const cx = w / 2;
@@ -2014,7 +3107,6 @@
         ctx.fill();
         ctx.stroke();
 
-        // Ejes
         ctx.strokeStyle = "#475569";
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -2032,7 +3124,6 @@
         const is16 = this.properties.tipo === "16-QAM";
         const maxNorm = is16 ? (3 / Math.sqrt(10)) : 1.0;
 
-        // Puntos ideales
         ctx.fillStyle = "rgba(148, 163, 184, 0.4)";
         if (!is16) {
             [-1, 1].forEach(xi => {
@@ -2057,7 +3148,6 @@
             });
         }
 
-        // Puntos y nubes de símbolos detectados en la constelación
         syms.forEach(s => {
             let px = cx + (s.I / maxNorm) * radius * 0.82;
             let py = cy - (s.Q / maxNorm) * radius * 0.82;
@@ -2075,7 +3165,6 @@
             ctx.fillText(`${s.bits}`, px + 5, py - 3);
         });
 
-        // 2. Tabla de información de frecuencia y fase de cada símbolo
         const tableY = plotY + plotSize + 10;
         ctx.fillStyle = "#0f172a";
         ctx.strokeStyle = "#334155";
@@ -2154,7 +3243,6 @@
         this.setDirtyCanvas(true, true);
     };
 
-    // Extrae o infiere los bits de una señal (desde cadena directa, metadatos QAM o muestreo en el tiempo)
     function extractBitstreamFromSignal(sig, umbral = 0.5) {
         if (!sig) return "";
         if (sig.rawBits && typeof sig.rawBits === "string" && sig.rawBits.length > 0) {
@@ -2206,7 +3294,6 @@
             return;
         }
 
-        // Auto-alineación de retardo temporal/desfase si está activado
         let bestShift = 0;
         let minMismatch = Infinity;
         const maxShift = this.properties.autoAlinear ? Math.min(16, Math.floor(bitsTx.length / 2)) : 0;
@@ -2276,7 +3363,6 @@
         const boxX = 10;
 
         ctx.save();
-        // Tarjeta de resultados
         ctx.fillStyle = "#0f172a";
         ctx.strokeStyle = "#334155";
         ctx.lineWidth = 1;
@@ -2299,7 +3385,6 @@
 
         ctx.font = "9.5px 'Segoe UI', monospace";
 
-        // Tasa BER acumulada destacada
         let berColor = st.cumulativeBER === 0 ? "#4ade80" : (st.cumulativeBER < 1e-2 ? "#facc15" : "#f87171");
         ctx.fillStyle = "#94a3b8";
         ctx.fillText("BER Acumulado :", boxX + 10, startY + 38);
@@ -2310,7 +3395,6 @@
             : "0.00e+0 (0.00%)";
         ctx.fillText(berStr, boxX + 115, startY + 38);
 
-        // BER Instantáneo y bits evaluados
         ctx.font = "9.5px 'Segoe UI', monospace";
         ctx.fillStyle = "#94a3b8";
         ctx.fillText("BER Instantáneo:", boxX + 10, startY + 54);
@@ -2327,7 +3411,6 @@
         ctx.fillStyle = "#cbd5e1";
         ctx.fillText(`${st.detectedDelayBits >= 0 ? "+" : ""}${st.detectedDelayBits} bits`, boxX + 115, startY + 86);
 
-        // Visualización de comparación de los últimos bits recibidos
         if (st.lastTxBits && st.lastRxBits) {
             ctx.fillStyle = "#64748b";
             ctx.fillText("Tx:", boxX + 10, startY + 104);
@@ -2407,7 +3490,6 @@
             }
         }
 
-        // Cálculo de alta densidad de muestras y métricas de telecomunicaciones
         if (sig && sig.values && sig.values.length > 0) {
             this.computeEyeMetrics(sig);
         } else {
@@ -2465,11 +3547,9 @@
                 let v = evalSignal(curT);
                 traceVals[s] = v;
 
-                // Detección de cruce por cero (umbral central) de alta resolución
                 if (prevV !== null && prevV * v <= 0 && prevV !== v) {
                     let frac = Math.abs(prevV) / (Math.abs(prevV) + Math.abs(v));
                     let exactCrossTau = prevT + frac * dtSub;
-                    // Los cruces ocurren idealmente cerca de tau = 0, tau = Tb o tau = 2*Tb
                     let distToTb = Math.abs(exactCrossTau - Tb);
                     let distToEdge = Math.min(exactCrossTau, Math.abs(exactCrossTau - T_span));
                     if (distToTb < Tb * 0.45) {
@@ -2482,7 +3562,6 @@
                 prevT = tau;
             }
 
-            // Muestra en el centro del ojo (instante óptimo de decisión tau = Tb)
             let midIndex = Math.floor(samplesPerTrace / 2);
             let vDecision = traceVals[midIndex];
             if (vDecision >= 0) midLevelsHigh.push(vDecision);
@@ -2491,7 +3570,6 @@
             eyeTracesData.push(traceVals);
         }
 
-        // Estadísticas instantáneas de Apertura Vertical y Margen de Ruido
         let v1_mean = 0, v0_mean = 0;
         let v1_min = 0, v0_max = 0;
         let std1 = 0, std0 = 0;
@@ -2519,7 +3597,6 @@
 
         let instQFactor = (std1 + std0 > 1e-4) ? (instAlturaMedia / (std1 + std0)) : 99.9;
 
-        // Jitter pico a pico (P-P) y RMS a partir de los cruces por cero
         let instJitterRMS = 0;
         let instJitterPP = 0;
         if (zeroCrossingOffsets.length >= 2) {
@@ -2533,7 +3610,6 @@
 
         let instAnchoOjo = Math.max(0, Tb - instJitterPP);
 
-        // --- Filtro de promedio móvil exponencial (EMA) para estabilizar métricas ---
         if (!this._avgMetrics || this._avgMetrics.Tb !== Tb) {
             this._avgMetrics = {
                 Tb: Tb,
@@ -2546,7 +3622,6 @@
                 samplesCount: 1
             };
         } else {
-            // Factor de suavizado α (ajustado para respuesta suave ante el ruido del canal)
             const alpha = 0.12;
             this._avgMetrics.aperturaV = (1 - alpha) * this._avgMetrics.aperturaV + alpha * instAperturaV;
             this._avgMetrics.alturaMedia = (1 - alpha) * this._avgMetrics.alturaMedia + alpha * instAlturaMedia;
@@ -2581,7 +3656,6 @@
         const plotX = 12;
 
         ctx.save();
-        // Mini display gráfico del ojo dentro del bloque
         ctx.fillStyle = "#020617";
         ctx.strokeStyle = "#334155";
         ctx.lineWidth = 1;
@@ -2590,7 +3664,6 @@
         ctx.fill();
         ctx.stroke();
 
-        // Ejes y retícula interna
         ctx.strokeStyle = "#1e293b";
         ctx.beginPath();
         ctx.moveTo(plotX, startY + miniPlotH / 2);
@@ -2601,7 +3674,6 @@
 
         const m = this.eyeMetrics;
         if (m && m.eyeTracesData && m.eyeTracesData.length > 0) {
-            // Escala de amplitud
             let maxVal = 1.0;
             for (let tr of m.eyeTracesData) {
                 for (let i = 0; i < tr.length; i++) {
@@ -2627,7 +3699,6 @@
             }
         }
 
-        // Panel de Métricas detalladas
         const statsY = startY + miniPlotH + 8;
         const statsH = 75;
         ctx.fillStyle = "#0f172a";
@@ -2643,7 +3714,6 @@
             ctx.fillText("Conecta una señal digital", plotX + 10, statsY + 28);
             ctx.fillText("para construir el diagrama de ojo.", plotX + 10, statsY + 44);
         } else {
-            // Columna 1 (Valores Promediados)
             ctx.fillStyle = m.aperturaV > 0.15 ? "#4ade80" : "#f87171";
             ctx.fillText(`Apertura V: ${m.aperturaV.toFixed(2)} V`, plotX + 8, statsY + 18);
 
@@ -2654,7 +3724,6 @@
             let qStr = m.qFactor > 50 ? ">50" : m.qFactor.toFixed(1);
             ctx.fillText(`Factor Q  : ${qStr}`, plotX + 8, statsY + 54);
 
-            // Columna 2 (Valores Promediados)
             ctx.fillStyle = "#cbd5e1";
             ctx.fillText(`Tb : ${m.Tb.toFixed(3)} s`, plotX + 145, statsY + 18);
 
@@ -3025,7 +4094,6 @@
         let timeTraces = [];
         let xLabel = isDisc ? "n (índice entero)" : "Tiempo t (s)";
 
-        // Representación de alta resolución del diagrama de ojo en Plotly
         if (isEyeScope && in1 && in1.values) {
             const Tb = Math.max(0.005, Number(oscNode.properties.tb || 0.5));
             const T_eye = 2 * Tb;
@@ -3062,7 +4130,6 @@
                     yTrace.push(evalEyeSignal(ti));
                 }
 
-                // Trazas translúcidas superpuestas: el solapamiento genera el mapa de densidad e intensifica el ojo y el jitter
                 timeTraces.push({
                     x: eyeTimeAxis,
                     y: yTrace,
@@ -3074,7 +4141,6 @@
                 });
             }
 
-            // Marcador visual vertical en el instante óptimo de decisión (t = Tb)
             let yMinEye = -1.5, yMaxEye = 1.5;
             if (timeTraces.length > 0) {
                 let allY = timeTraces.flatMap(tr => tr.y);
@@ -3413,7 +4479,7 @@
             subNode.subgraph.add(newNode);
             idMap.set(oldNode.id, newNode);
 
-            if (oldNode.type === "Telecom/Osciloscopio") {
+            if (oldNode.type === "Telecom/Osciloscopio" || oldNode.type === "Telecom/OsciloscopioOjo") {
                 activeOscilloscopes.delete(oldNode.id);
                 activeOscilloscopes.set(newNode.id, newNode);
             }
@@ -3514,7 +4580,7 @@
     }
 
     canvas.onNodeSelected = function(node) {
-        if (node && node.type === "Telecom/Osciloscopio") {
+        if (node && (node.type === "Telecom/Osciloscopio" || node.type === "Telecom/OsciloscopioOjo")) {
             const sel = document.getElementById("oscSelect");
             sel.value = String(node.id);
             dirtyPlots = true;
@@ -3653,7 +4719,7 @@
     }
 
     let lastExecutionTime = 0;
-    const SIMULATION_INTERVAL_MS = 60; // Frecuencia de cálculo y refresco (aprox. 16 FPS para mantener alto rendimiento)
+    const SIMULATION_INTERVAL_MS = 60;
 
     function mainLoop(timestamp) {
         if (isRunning) {
@@ -3662,13 +4728,10 @@
                 if (mainGraph.status === LiteGraph.LGraph.STATUS_RUNNING) {
                     mainGraph.runStep(1);
                 }
-
-                // Redibujado exclusivo del lienzo del canvas (nodos, diagrama de ojo y constelaciones)
                 canvas.draw(true, true);
             }
         }
 
-        // Las gráficas Plotly sólo se renderizan cuando dirtyPlots es explícitamente activado por el usuario
         if (dirtyPlots) {
             updatePlots();
         }
@@ -3743,7 +4806,6 @@
         oscCounter = 1;
         savedTimeRanges = { x: null, y: null };
         savedFreqRanges = { x: null, y: null };
-        lastRenderedSignalHash = "";
 
         const sel = document.getElementById("oscSelect");
         if (sel) sel.innerHTML = "";
@@ -3755,7 +4817,7 @@
     }
 
     // ==========================================
-    // 6. GESTIÓN DE ESQUEMÁTICOS (GUARDAR / CARGAR)
+    // 6. GESTIÓN DE ESQUEMÁTICOS (GUARDAR / CARGAR / COMBINAR)
     // ==========================================
     function saveGraphToFile() {
         const graphData = mainGraph.serialize();
@@ -3814,6 +4876,9 @@
             if (node.type === "Telecom/Filtro" && typeof node.updateWidgetsVisibility === "function") {
                 node.updateWidgetsVisibility();
             }
+            if (node.type === "Telecom/Cuantizador" && typeof node.updateWidgetVisibility === "function") {
+                node.updateWidgetVisibility();
+            }
             if (node.widgets && node.properties) {
                 node.widgets.forEach(w => {
                     let propKey = null;
@@ -3830,8 +4895,15 @@
                     else if (w.name.includes("Inversión")) propKey = "inv";
                     else if (w.name.includes("Valores")) propKey = "valores";
                     else if (w.name.includes("Inicio n0")) propKey = "n0";
+                    else if (w.name.includes("N.º Bits")) propKey = "bitsPorMuestra";
                     else if (w.name.includes("Bits")) propKey = "bits";
+                    else if (w.name.includes("Código Línea")) propKey = "codigoLinea";
                     else if (w.name.includes("Código")) propKey = "codigo";
+                    else if (w.name.includes("N.º Niveles")) propKey = "niveles";
+                    else if (w.name.includes("Tipo Cuantiz")) propKey = "tipo";
+                    else if (w.name.includes("Rango ±Vmax")) propKey = "vMax";
+                    else if (w.name.includes("Parámetro μ")) propKey = "mu";
+                    else if (w.name.includes("Parámetro A")) propKey = "leyA";
                     else if (w.name.includes("Tasa") || w.name.includes("Baudios")) propKey = (node.properties.baudios !== undefined ? "baudios" : "rb");
                     else if (w.name.includes("Inicio t0") || w.name.includes("Offset t0")) propKey = (node.type === "Telecom/OsciloscopioOjo" ? "t_offset" : "t_start");
                     else if (w.name.includes("Auto Tb/Ts")) propKey = "autoTb";
@@ -3879,44 +4951,118 @@
     }
 
     function restaurarEsquematico(data) {
-        mainGraph.clear();
-        activeOscilloscopes.clear();
-        savedTimeRanges = { x: null, y: null };
-        savedFreqRanges = { x: null, y: null };
-        
-        mainGraph.configure(data);
+        if (!data || !Array.isArray(data.nodes)) return;
 
-        const subgrafos = mainGraph.findNodesByType("Telecom/Subgrafo");
-        subgrafos.forEach(sgNode => {
-            if (sgNode.subgraph) {
-                sgNode.subgraph.start();
-                sgNode.syncPortsFromInner();
+        const existingNodes = currentGraph._nodes || [];
+        if (existingNodes.length === 0) {
+            mainGraph.configure(data);
+            const subgrafos = mainGraph.findNodesByType("Telecom/Subgrafo");
+            subgrafos.forEach(sgNode => {
+                if (sgNode.subgraph) {
+                    sgNode.subgraph.start();
+                    sgNode.syncPortsFromInner();
+                }
+            });
+            syncAllWidgets(mainGraph);
+            registrarOsciloscopiosGlobal(mainGraph);
+            syncOscSelector();
+            mainGraph.start();
+            mainGraph.runStep(1);
+            dirtyPlots = true;
+            updatePlots();
+            canvas.setDirty(true, true);
+            resetView();
+            return;
+        }
+
+        let maxExistingX = -Infinity;
+        let minExistingY = Infinity;
+        existingNodes.forEach(n => {
+            if (n.pos[0] + n.size[0] > maxExistingX) maxExistingX = n.pos[0] + n.size[0];
+            if (n.pos[1] < minExistingY) minExistingY = n.pos[1];
+        });
+        if (minExistingY === Infinity) minExistingY = 100;
+
+        let minIncomingX = Infinity, minIncomingY = Infinity;
+        data.nodes.forEach(nd => {
+            if (nd.pos) {
+                if (nd.pos[0] < minIncomingX) minIncomingX = nd.pos[0];
+                if (nd.pos[1] < minIncomingY) minIncomingY = nd.pos[1];
+            }
+        });
+        if (minIncomingX === Infinity) { minIncomingX = 0; minIncomingY = 0; }
+
+        const offsetX = (maxExistingX + 80) - minIncomingX;
+        const offsetY = minExistingY - minIncomingY;
+
+        const idMap = new Map();
+        const newNodesList = [];
+
+        data.nodes.forEach(nodeData => {
+            const newNode = LiteGraph.createNode(nodeData.type);
+            if (!newNode) return;
+
+            newNode.configure(nodeData);
+
+            if (nodeData.pos) {
+                newNode.pos = [nodeData.pos[0] + offsetX, nodeData.pos[1] + offsetY];
+            }
+
+            currentGraph.add(newNode);
+            idMap.set(nodeData.id, newNode);
+            newNodesList.push(newNode);
+
+            if (newNode.type === "Telecom/Osciloscopio" || newNode.type === "Telecom/OsciloscopioOjo") {
+                activeOscilloscopes.set(newNode.id, newNode);
+            }
+
+            if (newNode.type === "Telecom/Subgrafo" && newNode.subgraph) {
+                newNode.subgraph.start();
+                newNode.syncPortsFromInner();
+                registrarOsciloscopiosGlobal(newNode.subgraph);
             }
         });
 
-        syncAllWidgets(mainGraph);
+        if (Array.isArray(data.links)) {
+            data.links.forEach(linkData => {
+                if (!linkData) return;
+                const origNodeId = linkData[1];
+                const origSlot = linkData[2];
+                const targetNodeId = linkData[3];
+                const targetSlot = linkData[4];
 
-        function registrarOsciloscopios(graph) {
-            const oscNodes = graph.findNodesByType("Telecom/Osciloscopio").concat(graph.findNodesByType("Telecom/OsciloscopioOjo"));
-            oscNodes.forEach(node => {
-                activeOscilloscopes.set(node.id, node);
+                const src = idMap.get(origNodeId);
+                const dst = idMap.get(targetNodeId);
+                if (src && dst) {
+                    src.connect(origSlot, dst, targetSlot);
+                }
             });
         }
-        registrarOsciloscopios(mainGraph);
-        subgrafos.forEach(sgNode => {
-            if (sgNode.subgraph) registrarOsciloscopios(sgNode.subgraph);
-        });
 
+        canvas.deselectAllNodes();
+        if (newNodesList.length > 0) {
+            canvas.selectNodes(newNodesList);
+        }
+
+        syncAllWidgets(currentGraph);
         syncOscSelector();
-        mainGraph.start();
-        
-        mainGraph.runStep(1);
         mainGraph.runStep(1);
 
         dirtyPlots = true;
         updatePlots();
         canvas.setDirty(true, true);
-        resetView();
+    }
+
+    function registrarOsciloscopiosGlobal(graph) {
+        if (!graph || !graph.findNodesByType) return;
+        const oscNodes = graph.findNodesByType("Telecom/Osciloscopio").concat(graph.findNodesByType("Telecom/OsciloscopioOjo"));
+        oscNodes.forEach(node => {
+            activeOscilloscopes.set(node.id, node);
+        });
+        const subgrafos = graph.findNodesByType("Telecom/Subgrafo");
+        subgrafos.forEach(sgNode => {
+            if (sgNode.subgraph) registrarOsciloscopiosGlobal(sgNode.subgraph);
+        });
     }
 
     resizeCanvas();
