@@ -261,7 +261,7 @@
                 <span>Muestreo Ideal (xs)</span><span class="dot" style="background:#10b981"></span>
             </button>
             <button class="module-btn" onclick="addModule('Telecom/Cuantizador')">
-                <span>Cuantizador (Midthread/Midrise)</span><span class="dot" style="background:#06b6d4"></span>
+                <span>Cuantizador (Midtread/Midrise)</span><span class="dot" style="background:#06b6d4"></span>
             </button>
             <button class="module-btn" onclick="addModule('Telecom/Codificador')">
                 <span>Codificador PCM (n bits)</span><span class="dot" style="background:#0284c7"></span>
@@ -913,7 +913,14 @@
         this.addWidget("text", "Etiqueta", "d(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.addWidget("text", "Bits", "10110010", v => { that.properties.bits = v; dirtyPlots = true; });
         this.addWidget("combo", "Código", "NRZ Unipolar (0/1)", v => { that.properties.codigo = v; dirtyPlots = true; }, { 
-            values: ["NRZ Unipolar (0/1)", "RZ Unipolar (0/1)", "NRZ Polar (-1/+1)", "Manchester"] 
+            values: [
+                "NRZ Unipolar (0/1)",
+                "NRZ Polar (-1/+1)",
+                "RZ Unipolar (0/1)",
+                "RZ Polar (-1/0/+1)",
+                "AMI Bipolar (-1/0/+1)",
+                "Manchester"
+            ] 
         });
         this.addWidget("number", "Tasa Rb (bps)", 2.0, v => { that.properties.rb = Math.max(0.1, Number(v)); dirtyPlots = true; }, { 
             min: 0.1, step: 0.5 
@@ -925,7 +932,7 @@
             step: 0.1 
         });
         
-        this.size = [275, 185];
+        this.size = [285, 185];
         applyLightStyle(this, "#bfdbfe", "#ffffff");
     }
     NodoDigital.title = "Secuencia Digital";
@@ -941,6 +948,20 @@
         const { codigo, amp, nombre } = this.properties;
         const { t, dt } = getCurrentTimeVector();
 
+        let amiLevels = null;
+        if (codigo === "AMI Bipolar (-1/0/+1)") {
+            amiLevels = new Array(numBits);
+            let nextPolarity = 1;
+            for (let i = 0; i < numBits; i++) {
+                if (cleanBits[i] === "1") {
+                    amiLevels[i] = nextPolarity * amp;
+                    nextPolarity = -nextPolarity;
+                } else {
+                    amiLevels[i] = 0;
+                }
+            }
+        }
+
         let values = t.map(time => {
             if (time < tStart || time >= tEnd) {
                 return 0;
@@ -954,11 +975,17 @@
             if (codigo === "NRZ Unipolar (0/1)") {
                 return bit ? amp : 0;
             }
+            if (codigo === "NRZ Polar (-1/+1)") {
+                return bit ? amp : -amp;
+            }
             if (codigo === "RZ Unipolar (0/1)") {
                 return (bit && posInBit < 0.5) ? amp : 0;
             }
-            if (codigo === "NRZ Polar (-1/+1)") {
-                return bit ? amp : -amp;
+            if (codigo === "RZ Polar (-1/0/+1)") {
+                return (posInBit < 0.5) ? (bit ? amp : -amp) : 0;
+            }
+            if (codigo === "AMI Bipolar (-1/0/+1)") {
+                return amiLevels[bitIndex];
             }
             if (codigo === "Manchester") {
                 return (bit === 1) ? (posInBit < 0.5 ? amp : -amp) : (posInBit < 0.5 ? -amp : amp);
@@ -1396,11 +1423,11 @@
         }, {
             values: [
                 "Uniforme Midrise",
-                "Uniforme Midthread",
+                "Uniforme Midtread",
                 "No Uniforme Ley μ (Midrise)",
-                "No Uniforme Ley μ (Midthread)",
+                "No Uniforme Ley μ (Midtread)",
                 "No Uniforme Ley A (Midrise)",
-                "No Uniforme Ley A (Midthread)"
+                "No Uniforme Ley A (Midtread)"
             ]
         });
         this.wVmax = this.addWidget("number", "Rango ±Vmax (V)", 1.0, v => {
@@ -1457,7 +1484,7 @@
         const L = Math.max(2, Math.round(Number(this.properties.niveles || 8)));
         const Vmax = Math.max(0.001, Number(this.properties.vMax || 1.0));
         const tipo = this.properties.tipo || "Uniforme Midrise";
-        const isMidthread = tipo.includes("Midthread");
+        const isMidtread = tipo.includes("Midtread") || tipo.includes("Midthread");
         const isMuLaw = tipo.includes("Ley μ");
         const isALaw = tipo.includes("Ley A");
         const mu = Math.max(1, Number(this.properties.mu || 255));
@@ -1478,7 +1505,7 @@
             let uLow = -1.0;
             let uHigh = 1.0;
 
-            if (!isMidthread) {
+            if (!isMidtread) {
                 uLow = -1.0 + idx * deltaU;
                 uHigh = -1.0 + (idx + 1) * deltaU;
                 uQuant = -1.0 + (idx + 0.5) * deltaU;
@@ -1543,7 +1570,7 @@
         const L = Math.max(2, Math.round(Number(this.properties.niveles || 8)));
         const Vmax = Math.max(0.001, Number(this.properties.vMax || 1.0));
         const tipo = this.properties.tipo || "Uniforme Midrise";
-        const isMidthread = tipo.includes("Midthread");
+        const isMidtread = tipo.includes("Midtread") || tipo.includes("Midthread");
         const isMuLaw = tipo.includes("Ley μ");
         const isALaw = tipo.includes("Ley A");
         const mu = Math.max(1, Number(this.properties.mu || 255));
@@ -1560,7 +1587,7 @@
         let idx = 0;
         let uQuant = 0;
 
-        if (!isMidthread) {
+        if (!isMidtread) {
             idx = Math.floor((u + 1.0) / deltaU);
             idx = Math.max(0, Math.min(L - 1, idx));
             uQuant = -1.0 + (idx + 0.5) * deltaU;
@@ -2388,18 +2415,64 @@
         this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
         this.addWidget("number", "Índice Mod μ", 0.8, v => { that.properties.mu = Number(v); dirtyPlots = true; }, { step: 0.1 });
         this.addWidget("number", "Amplitud Ac", 1, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { step: 0.2 });
-        this.size = [250, 135];
+        this.amStats = { Am: 0, ka: 0, hasInput: false };
+        this.size = [250, 168];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorAM.title = "Modulador AM";
     NodoModuladorAM.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
-        if (!in1) return;
+        if (!in1 || !in1.values) {
+            this.amStats = { Am: 0, ka: 0, hasInput: false };
+            this.setOutputData(0, null);
+            return;
+        }
         const { fc, mu, Ac, nombre } = this.properties;
         const { t, dt } = getCurrentTimeVector();
-        
-        let values = t.map((time, idx) => Ac * (1 + mu * in1.values[idx]) * Math.cos(2 * Math.PI * fc * time));
+        const m = in1.values;
+
+        // Calcular la amplitud pico Am = max(|m(t)|) de la señal moduladora
+        let Am = 0;
+        for (let i = 0; i < m.length; i++) {
+            const absVal = Math.abs(m[i]);
+            if (absVal > Am) Am = absVal;
+        }
+
+        // Ajustar ka = μ / Am para mantener el índice de modulación μ = ka * Am
+        const ka = Am > 1e-9 ? (mu / Am) : 0;
+        this.amStats = { Am: Am, ka: ka, hasInput: true };
+
+        let values = t.map((time, idx) => Ac * (1 + ka * m[idx]) * Math.cos(2 * Math.PI * fc * time));
         this.setOutputData(0, { name: nombre || "s_AM(t)", values, discrete: false, isPeriodic: true, dt: dt });
+    };
+    NodoModuladorAM.prototype.onDrawForeground = function(ctx) {
+        if (this.flags.collapsed) return;
+        const w = this.size[0];
+        const boxX = 10;
+        const boxY = 136;
+        const boxW = w - 20;
+        const boxH = 22;
+
+        ctx.save();
+        ctx.fillStyle = "#0f172a";
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxW, boxH, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = "9px 'Segoe UI', monospace";
+        if (!this.amStats || !this.amStats.hasInput) {
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillText("Am: — V  |  k_a = μ/Am: —", boxX + 8, boxY + 14);
+        } else {
+            ctx.fillStyle = "#cbd5e1";
+            ctx.fillText(`Am: ${this.amStats.Am.toFixed(2)}V`, boxX + 8, boxY + 14);
+            ctx.fillStyle = "#fde047";
+            ctx.fillText(`k_a: ${this.amStats.ka.toFixed(3)} V⁻¹`, boxX + 108, boxY + 14);
+        }
+        ctx.restore();
     };
     LiteGraph.registerNodeType("Telecom/ModuladorAM", NodoModuladorAM);
 
