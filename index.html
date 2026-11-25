@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Simulador Modular de Telecomunicaciones</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
     <!-- LiteGraph.js -->
     <link rel="stylesheet" type="text/css" href="https://tamats.com/projects/litegraph/css/litegraph.css">
     <script type="text/javascript" src="https://tamats.com/projects/litegraph/build/litegraph.js"></script>
@@ -75,18 +76,20 @@
         }
 
         #subgraph-banner {
-            display: none; position: absolute; top: 12px; left: 16px; z-index: 20;
-            background: #0f172a; color: white; padding: 8px 14px; border-radius: 6px;
-            font-size: 0.85rem; box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            display: none; position: absolute; top: 10px; left: 12px; z-index: 20;
+            background: #0f172a; color: white; padding: 6px 12px; border-radius: 6px;
+            font-size: 0.8rem; box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            max-width: calc(100% - 175px); align-items: center; gap: 8px; flex-wrap: wrap;
         }
         #subgraph-banner button {
             background: #38bdf8; border: none; color: #0f172a; font-weight: 600;
-            padding: 4px 10px; margin-left: 10px; border-radius: 4px; cursor: pointer;
+            padding: 4px 10px; margin-left: 0; border-radius: 4px; cursor: pointer;
+            white-space: nowrap;
         }
 
         /* Botones flotantes de Zoom y Herramientas en Lienzo */
         #mobile-zoom-controls {
-            position: absolute; bottom: 16px; left: 16px; z-index: 25;
+            position: absolute; bottom: 14px; right: 14px; z-index: 25;
             display: flex; flex-direction: column; gap: 6px;
         }
         .zoom-btn {
@@ -124,6 +127,12 @@
             font-size: 0.78rem; background: #fff; color: #1e293b;
         }
         .ctrl-item input[type="number"] { width: 58px; }
+        .ctrl-item input[type="checkbox"] { width: auto; padding: 0; margin: 0 2px 0 3px; cursor: pointer; }
+        .ctrl-item .auto-check-lbl {
+            display: inline-flex; align-items: center; gap: 2px;
+            font-weight: 500; font-size: 0.74rem; color: #64748b; cursor: pointer; user-select: none;
+        }
+        .ctrl-item input.y-auto-dim { opacity: 0.58; background: #f8fafc; }
         
         .plot-container { 
             flex: 1; width: 100%; min-height: 240px; border-bottom: 1px solid #f1f5f9; 
@@ -148,8 +157,72 @@
             background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b;
             padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;
             cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            white-space: nowrap;
         }
         #toggle-panel-btn:hover { background: #f1f5f9; }
+
+        .js-plotly-plot .plotly .modebar {
+            top: 2px !important;
+            right: 4px !important;
+            background: rgba(255, 255, 255, 0.88) !important;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 960px) {
+            body {
+                flex-direction: column;
+                height: 100vh;
+                width: 100vw;
+            }
+            #sidebar {
+                width: 100%;
+                min-width: 0;
+                max-height: 165px;
+                border-right: none;
+                border-bottom: 1px solid #e2e8f0;
+                padding: 8px 10px;
+                flex-shrink: 0;
+            }
+            .category-content {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 4px;
+            }
+            .module-btn {
+                font-size: 0.75rem;
+                padding: 5px 8px;
+                min-height: 28px;
+            }
+            #canvas-container {
+                flex: 1 1 52%;
+                width: 100%;
+                min-height: 260px;
+            }
+            #resizer {
+                display: none !important;
+            }
+            #plot-panel {
+                width: 100% !important;
+                min-width: 0;
+                max-width: 100%;
+                flex: 1 1 48%;
+                height: auto;
+                min-height: 240px;
+                border-left: none;
+                border-top: 1px solid #e2e8f0;
+            }
+            #mobile-zoom-controls {
+                flex-direction: row;
+                bottom: 10px;
+                right: 10px;
+                gap: 4px;
+            }
+            .zoom-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 0.95rem;
+            }
+        }
 
         /* Modal Tabla de Niveles de Cuantización y Códigos Binarios */
         #quant-table-modal {
@@ -399,8 +472,26 @@
                 <input type="number" id="tMax" value="5.0" step="0.5" oninput="onTimeRangeChanged()" onchange="onTimeRangeChanged()">
             </div>
             <div class="ctrl-item">
+                <label>Y Tiempo (V):</label>
+                <input type="number" id="yTimeMin" value="-2.0" step="0.5" class="y-auto-dim" title="Límite inferior del eje vertical (Tiempo / Ojo)" oninput="onTimeYScaleInput()" onchange="onTimeYScaleInput()">
+                <span>a</span>
+                <input type="number" id="yTimeMax" value="2.0" step="0.5" class="y-auto-dim" title="Límite superior del eje vertical (Tiempo / Ojo)" oninput="onTimeYScaleInput()" onchange="onTimeYScaleInput()">
+                <label class="auto-check-lbl" title="Ajuste automático de la escala vertical (Tiempo / Ojo)">
+                    <input type="checkbox" id="yTimeAuto" checked onchange="onTimeYAutoToggled()">Auto
+                </label>
+            </div>
+            <div class="ctrl-item">
                 <label>Frec ±(Hz):</label>
                 <input type="number" id="fMax" value="50" step="5" min="0.1" max="500" oninput="forcePlotUpdate()" onchange="forcePlotUpdate()">
+            </div>
+            <div class="ctrl-item" id="ctrlFreqY">
+                <label>Y |X(f)|:</label>
+                <input type="number" id="yFreqMin" value="0.0" step="0.5" class="y-auto-dim" title="Límite inferior del eje vertical (Espectro)" oninput="onFreqYScaleInput()" onchange="onFreqYScaleInput()">
+                <span>a</span>
+                <input type="number" id="yFreqMax" value="5.0" step="0.5" class="y-auto-dim" title="Límite superior del eje vertical (Espectro)" oninput="onFreqYScaleInput()" onchange="onFreqYScaleInput()">
+                <label class="auto-check-lbl" title="Ajuste automático de la escala vertical (Espectro)">
+                    <input type="checkbox" id="yFreqAuto" checked onchange="onFreqYAutoToggled()">Auto
+                </label>
             </div>
             <div class="ctrl-item">
                 <button class="action-btn" id="btnToggleFreq" style="padding: 2px 7px; margin:0;" onclick="toggleFreqPlot()">Ocultar |X(f)|</button>
@@ -449,6 +540,11 @@
     let dirtyPlots = true;
     let showFreqSpectrum = true;
     let isRunning = false;
+    let globalOscUidCounter = 0;
+    let oscCounter = 1;
+    const activeOscilloscopes = new Map();
+    let lastSelectedOscUid = null;
+    const subgraphViewStack = [];
 
     function toggleSidebarSection(headerElem) {
         headerElem.classList.toggle("collapsed");
@@ -485,6 +581,9 @@
     function stepSimulation() {
         if (mainGraph) {
             mainGraph.runStep(1);
+            if (currentGraph && currentGraph !== mainGraph && !isGraphReachableFromMain(currentGraph)) {
+                currentGraph.runStep(1);
+            }
             dirtyPlots = true;
             updatePlots();
             canvas.setDirty(true, true);
@@ -492,8 +591,10 @@
     }
 
     function getCurrentTimeVector() {
-        let tMin = parseFloat(document.getElementById("tMin").value) || -5.0;
-        let tMax = parseFloat(document.getElementById("tMax").value) || 5.0;
+        const rawMin = parseFloat(document.getElementById("tMin").value);
+        const rawMax = parseFloat(document.getElementById("tMax").value);
+        let tMin = Number.isFinite(rawMin) ? rawMin : -5.0;
+        let tMax = Number.isFinite(rawMax) ? rawMax : 5.0;
         if (tMin >= tMax) tMin = tMax - 0.1;
 
         let dt = (tMax - tMin) / (N - 1);
@@ -502,6 +603,34 @@
             timeArray[i] = tMin + i * dt;
         }
         return { t: timeArray, dt: dt, tMin: tMin, tMax: tMax, T: (tMax - tMin) };
+    }
+
+    function evalSignalAt(sigObj, time, dt, visited, clampOutOfRange = false) {
+        if (!sigObj) return 0;
+        const src = sigObj.sourceNode;
+        if (src && typeof src.evalAt === "function") {
+            const vSet = visited || new Set();
+            if (vSet.has(src)) return 0;
+            vSet.add(src);
+            try {
+                return src.evalAt(time, dt, vSet);
+            } finally {
+                vSet.delete(src);
+            }
+        }
+        if (!Array.isArray(sigObj.values) || sigObj.values.length === 0) return 0;
+        const { tMin, tMax, dt: curDt } = getCurrentTimeVector();
+        const stepDt = curDt || dt || 0.01;
+        if (time < tMin) return clampOutOfRange ? sigObj.values[0] : 0;
+        if (time > tMax) return clampOutOfRange ? sigObj.values[sigObj.values.length - 1] : 0;
+        if (time === tMin) return sigObj.values[0];
+        if (time === tMax) return sigObj.values[sigObj.values.length - 1];
+        const idx = (time - tMin) / stepDt;
+        const i0 = Math.floor(idx);
+        if (i0 < 0) return sigObj.values[0];
+        if (i0 >= sigObj.values.length - 1) return sigObj.values[sigObj.values.length - 1];
+        const frac = idx - i0;
+        return sigObj.values[i0] * (1 - frac) + sigObj.values[i0 + 1] * frac;
     }
 
     function getActiveFrequencyAxis(fMax) {
@@ -516,7 +645,7 @@
 
     function computeSpectrum(signalObj, currentDt, active_f_axis) {
         if (!signalObj) return new Array(active_f_axis.length).fill(0);
-        if (signalObj.isAnalyticDelta) return active_f_axis.map(() => signalObj.deltaWeight);
+        if (signalObj.isAnalyticDelta) return active_f_axis.map(() => Math.abs(signalObj.deltaWeight || 0));
 
         if (signalObj.isSampledSignal && signalObj.sampleInstants) {
             const Ts = signalObj.sampledTs || (1 / (signalObj.fs_sample || 20));
@@ -570,17 +699,21 @@
 
     function evaluateFilterH(f, tipo, aprox, fc, bw, orden, gain) {
         const absF = Math.abs(f);
+        const fcSafe = Math.max(0.1, Number.isFinite(Number(fc)) ? Number(fc) : 10);
+        const bwSafe = Math.max(0.1, Number.isFinite(Number(bw)) ? Number(bw) : 10);
+        const ordenSafe = Math.max(1, Number.isFinite(Number(orden)) ? Number(orden) : 4);
+        const gainSafe = Number.isFinite(Number(gain)) ? Number(gain) : 1.0;
         let H = 0;
         if (tipo === "Paso Bajo (LPF)") {
-            H = (aprox === "Ideal") ? (absF <= fc ? 1 : 0) : 1 / Math.sqrt(1 + Math.pow(absF / Math.max(0.1, fc), 2 * orden));
+            H = (aprox === "Ideal") ? (absF <= fcSafe ? 1 : 0) : 1 / Math.sqrt(1 + Math.pow(absF / fcSafe, 2 * ordenSafe));
         } else if (tipo === "Paso Alto (HPF)") {
-            H = (aprox === "Ideal") ? (absF >= fc ? 1 : 0) : (absF === 0 ? 0 : 1 / Math.sqrt(1 + Math.pow(fc / absF, 2 * orden)));
+            H = (aprox === "Ideal") ? (absF >= fcSafe ? 1 : 0) : (absF === 0 ? 0 : 1 / Math.sqrt(1 + Math.pow(fcSafe / absF, 2 * ordenSafe)));
         } else if (tipo === "Paso Banda (BPF)") {
-            const halfBW = Math.max(0.05, bw / 2);
-            const dist = Math.abs(absF - fc);
-            H = (aprox === "Ideal") ? (dist <= halfBW ? 1 : 0) : 1 / Math.sqrt(1 + Math.pow(dist / halfBW, 2 * orden));
+            const halfBW = Math.max(0.05, bwSafe / 2);
+            const dist = Math.abs(absF - fcSafe);
+            H = (aprox === "Ideal") ? (dist <= halfBW ? 1 : 0) : 1 / Math.sqrt(1 + Math.pow(dist / halfBW, 2 * ordenSafe));
         }
-        return gain * H;
+        return gainSafe * H;
     }
 
     LiteGraph.NODE_DEFAULT_SHAPE = LiteGraph.ROUND_SHAPE;
@@ -612,11 +745,11 @@
             dirtyPlots = true;
         }, { values: ["Coseno", "Seno", "Pulso Rectangular", "Pulso Triangular", "Función Rampa", "Sinc (Sen Cardinal)", "Escalón Unidad", "Delta", "Exponencial Decreciente"] });
         
-        this.wAmp = this.addWidget("number", "Amplitud", 1, v => { that.properties.amp = Number(v); dirtyPlots = true; }, { step: 0.1 });
-        this.wFreq = this.addWidget("number", "Frec (Hz)", 5, v => { that.properties.freq = Number(v); dirtyPlots = true; }, { step: 0.5 });
-        this.wPeriodo = this.addWidget("number", "Periodo T (s)", 0.2, v => { that.properties.periodo = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.01, step: 0.1 });
-        this.wAncho = this.addWidget("number", "Duración (s)", 4.0, v => { that.properties.ancho = Number(v); dirtyPlots = true; }, { min: 0.05, step: 0.2 });
-        this.wTau = this.addWidget("number", "Tau τ (s)", 0.5, v => { that.properties.tau = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.01, step: 0.05 });
+        this.wAmp = this.addWidget("number", "Amplitud", 1, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.amp = n; dirtyPlots = true; }, { step: 0.1 });
+        this.wFreq = this.addWidget("number", "Frec (Hz)", 5, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.freq = n; dirtyPlots = true; }, { step: 0.5 });
+        this.wPeriodo = this.addWidget("number", "Periodo T (s)", 0.2, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.periodo = Math.max(0.01, n); dirtyPlots = true; }, { min: 0.01, step: 0.1 });
+        this.wAncho = this.addWidget("number", "Duración (s)", 4.0, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.ancho = Math.max(0.001, n); dirtyPlots = true; }, { min: 0.05, step: 0.2 });
+        this.wTau = this.addWidget("number", "Tau τ (s)", 0.5, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.tau = Math.max(0.01, n); dirtyPlots = true; }, { min: 0.01, step: 0.05 });
         
         this.updateWidgetVisibility();
         applyLightStyle(this, "#bfdbfe", "#ffffff");
@@ -652,7 +785,8 @@
 
     NodoGeneradorContinuo.prototype.evalAt = function(time, dt) {
         const { tipo, amp, freq, periodo, ancho, tau } = this.properties;
-        const dur = Math.max(0.001, ancho || 1.0);
+        const anchoNum = Number(ancho);
+        const dur = Math.max(0.001, Number.isFinite(anchoNum) ? anchoNum : 1.0);
 
         if (tipo === "Coseno") return amp * Math.cos(2 * Math.PI * freq * time);
         if (tipo === "Seno") return amp * Math.sin(2 * Math.PI * freq * time);
@@ -680,17 +814,26 @@
         }
 
         if (tipo === "Escalón Unidad") return time >= 0 ? amp : 0;
-        if (tipo === "Delta") return Math.abs(time) < (dt * 0.75) ? (amp / dt) : 0;
+        if (tipo === "Delta") return (time >= -dt * 0.5 && time < dt * 0.5) ? (amp / dt) : 0;
         if (tipo === "Exponencial Decreciente") return time >= 0 ? amp * Math.exp(-time / Math.max(0.001, tau)) : 0;
         return 0;
     };
 
     NodoGeneradorContinuo.prototype.onExecute = function() {
         const { tipo, amp, nombre } = this.properties;
-        const { t, dt } = getCurrentTimeVector();
+        const { t, tMin, dt } = getCurrentTimeVector();
         const isPeriodic = (tipo === "Coseno" || tipo === "Seno");
 
-        let values = t.map(time => this.evalAt(time, dt));
+        let values;
+        if (tipo === "Delta") {
+            values = new Array(N).fill(0);
+            const idx0 = Math.round((0 - tMin) / dt);
+            if (idx0 >= 0 && idx0 < N) {
+                values[idx0] = amp / dt;
+            }
+        } else {
+            values = t.map(time => this.evalAt(time, dt));
+        }
 
         this.setOutputData(0, { 
             name: nombre || "x(t)",
@@ -757,41 +900,69 @@
         this.setDirtyCanvas(true, true);
     };
 
-    NodoTransformacion.prototype.evalAt = function(time, dt) {
+    NodoTransformacion.prototype.evalAt = function(time, dt, visited) {
         let in1 = this.getInputData(0);
         if (!in1) return 0;
-        const t0 = Number(this.properties.t0 || 0);
-        const a_val = Math.max(0.01, Number(this.properties.a || 1));
+        const t0 = Number.isFinite(Number(this.properties.t0)) ? Number(this.properties.t0) : 0;
+        const aRaw = Number(this.properties.a);
+        const a_val = Math.max(0.01, Number.isFinite(aRaw) ? aRaw : 1);
         const sign = this.properties.inv ? -1.0 : 1.0;
         
         let tau = sign * a_val * (time + t0);
-
-        if (in1.sourceNode && typeof in1.sourceNode.evalAt === "function") {
-            return in1.sourceNode.evalAt(tau, dt);
-        }
-        const { dt: curDt, tMin } = getCurrentTimeVector();
-        let idx = (tau - tMin) / curDt;
-        let i0 = Math.floor(idx);
-        if (i0 >= 0 && i0 < N - 1) {
-            let frac = idx - i0;
-            return in1.values[i0] * (1 - frac) + in1.values[i0 + 1] * frac;
-        }
-        return 0;
+        return evalSignalAt(in1, tau, dt, visited);
     };
 
     NodoTransformacion.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
-        if (!in1) return;
+        if (!in1) {
+            this.setOutputData(0, null);
+            return;
+        }
 
-        const isDisc = Boolean(in1.discrete);
-        this.adaptToInputDomain(isDisc);
+        const isSampled = Boolean(in1.isSampledSignal && Array.isArray(in1.sampleInstants));
+        const isIntDisc = Boolean(in1.discrete && !isSampled);
+        this.adaptToInputDomain(isIntDisc);
 
-        const nombre = this.properties.nombre || (isDisc ? "y[n]" : "y(t)");
+        const nombre = this.properties.nombre || (isIntDisc ? "y[n]" : "y(t)");
         const inv = Boolean(this.properties.inv);
         const sign = inv ? -1.0 : 1.0;
         const { t, dt, tMin } = getCurrentTimeVector();
 
-        if (isDisc && in1.stemX && in1.stemY) {
+        if (isSampled) {
+            const t0 = Number.isFinite(Number(this.properties.t0)) ? Number(this.properties.t0) : 0;
+            const aRaw = Number(this.properties.a);
+            const a_val = Math.max(0.01, Number.isFinite(aRaw) ? aRaw : 1);
+
+            const transformed = in1.sampleInstants.map(s => ({
+                t: (s.t / (sign * a_val)) - t0,
+                v: s.v
+            })).sort((a, b) => a.t - b.t);
+
+            const resStemX = transformed.map(p => p.t);
+            const resStemY = transformed.map(p => p.v);
+            const fullValues = new Array(N).fill(0);
+            for (let i = 0; i < transformed.length; i++) {
+                const mappedIdx = Math.round((transformed[i].t - tMin) / dt);
+                if (mappedIdx >= 0 && mappedIdx < N) {
+                    fullValues[mappedIdx] = transformed[i].v;
+                }
+            }
+
+            const baseFs = in1.fs_sample || (in1.sampledTs ? 1 / in1.sampledTs : 20);
+            const newFs = baseFs * a_val;
+            this.setOutputData(0, {
+                name: nombre,
+                values: fullValues,
+                discrete: true,
+                isSampledSignal: true,
+                stemX: resStemX,
+                stemY: resStemY,
+                sampleInstants: transformed,
+                fs_sample: newFs,
+                sampledTs: 1 / newFs,
+                dt: dt
+            });
+        } else if (isIntDisc && in1.stemX && in1.stemY) {
             const n0 = Math.round(Number(this.properties.t0 || 0));
             const a_int = Math.max(1, Math.round(Number(this.properties.a || 1)));
 
@@ -802,7 +973,7 @@
                 let k = in1.stemX[i];
                 let num = sign * k;
                 if (num % a_int === 0) {
-                    let n = Math.floor(num / a_int) - n0;
+                    let n = Math.trunc(num / a_int) - n0;
                     outX.push(n);
                     outY.push(in1.stemY[i]);
                 }
@@ -835,10 +1006,12 @@
                 dt: dt
             });
         } else {
-            const a_val = Math.max(0.01, Number(this.properties.a || 1));
+            const aRaw = Number(this.properties.a);
+            const a_val = Math.max(0.01, Number.isFinite(aRaw) ? aRaw : 1);
+            const t0 = Number.isFinite(Number(this.properties.t0)) ? Number(this.properties.t0) : 0;
             let outValues = t.map(time => this.evalAt(time, dt));
 
-            this.setOutputData(0, {
+            const outObj = {
                 name: nombre,
                 sourceNode: this,
                 values: outValues,
@@ -847,7 +1020,18 @@
                 isAnalyticDelta: in1.isAnalyticDelta,
                 deltaWeight: in1.deltaWeight ? in1.deltaWeight / a_val : 0,
                 dt: dt
-            });
+            };
+            if (!inv) {
+                if (in1.lineCode !== undefined) outObj.lineCode = in1.lineCode;
+                if (in1.Tb !== undefined) outObj.Tb = in1.Tb / a_val;
+                if (in1.Rb !== undefined) outObj.Rb = in1.Rb * a_val;
+                if (in1.baudios !== undefined) outObj.baudios = in1.baudios * a_val;
+                if (in1.t_start !== undefined) outObj.t_start = (in1.t_start / a_val) - t0;
+                const srcNumBits = in1.numBits !== undefined ? in1.numBits : (in1.rawBits ? in1.rawBits.length : undefined);
+                if (srcNumBits !== undefined) outObj.numBits = srcNumBits;
+                if (in1.bitAmp !== undefined) outObj.bitAmp = in1.bitAmp;
+            }
+            this.setOutputData(0, outObj);
         }
     };
     LiteGraph.registerNodeType("Telecom/Transformacion", NodoTransformacion);
@@ -936,6 +1120,30 @@
         applyLightStyle(this, "#bfdbfe", "#ffffff");
     }
     NodoDigital.title = "Secuencia Digital";
+    NodoDigital.prototype._evalBitSignal = function(time, cleanBits, numBits, Tb, tStart, tEnd, codigo, amp, amiLevels) {
+        if (time < tStart || time >= tEnd) return 0;
+        const rawIdx = (time - tStart) / Tb;
+        let bitIndex = Math.floor(rawIdx + 1e-12);
+        if (bitIndex >= numBits) bitIndex = numBits - 1;
+        if (bitIndex < 0) bitIndex = 0;
+        const bit = cleanBits[bitIndex] === "1" ? 1 : 0;
+        const posInBit = Math.max(0, Math.min(1 - 1e-12, rawIdx - bitIndex));
+
+        if (codigo === "NRZ Unipolar (0/1)") return bit ? amp : 0;
+        if (codigo === "NRZ Polar (-1/+1)") return bit ? amp : -amp;
+        if (codigo === "RZ Unipolar (0/1)") return (bit && posInBit < 0.5) ? amp : 0;
+        if (codigo === "RZ Polar (-1/0/+1)") return (posInBit < 0.5) ? (bit ? amp : -amp) : 0;
+        if (codigo === "AMI Bipolar (-1/0/+1)") return amiLevels ? amiLevels[bitIndex] : 0;
+        if (codigo === "Manchester") return (bit === 1) ? (posInBit < 0.5 ? amp : -amp) : (posInBit < 0.5 ? -amp : amp);
+        return 0;
+    };
+
+    NodoDigital.prototype.evalAt = function(time) {
+        const p = this._lastDigParams;
+        if (!p) return 0;
+        return this._evalBitSignal(time, p.cleanBits, p.numBits, p.Tb, p.tStart, p.tEnd, p.codigo, p.amp, p.amiLevels);
+    };
+
     NodoDigital.prototype.onExecute = function() {
         let cleanBits = (this.properties.bits || "0").replace(/[^01]/g, "");
         if (cleanBits.length === 0) cleanBits = "0";
@@ -962,40 +1170,16 @@
             }
         }
 
-        let values = t.map(time => {
-            if (time < tStart || time >= tEnd) {
-                return 0;
-            }
-
-            let bitIndex = Math.floor((time - tStart) / Tb);
-            if (bitIndex >= numBits) bitIndex = numBits - 1;
-            let bit = cleanBits[bitIndex] === "1" ? 1 : 0;
-            let posInBit = ((time - tStart) % Tb) / Tb;
-
-            if (codigo === "NRZ Unipolar (0/1)") {
-                return bit ? amp : 0;
-            }
-            if (codigo === "NRZ Polar (-1/+1)") {
-                return bit ? amp : -amp;
-            }
-            if (codigo === "RZ Unipolar (0/1)") {
-                return (bit && posInBit < 0.5) ? amp : 0;
-            }
-            if (codigo === "RZ Polar (-1/0/+1)") {
-                return (posInBit < 0.5) ? (bit ? amp : -amp) : 0;
-            }
-            if (codigo === "AMI Bipolar (-1/0/+1)") {
-                return amiLevels[bitIndex];
-            }
-            if (codigo === "Manchester") {
-                return (bit === 1) ? (posInBit < 0.5 ? amp : -amp) : (posInBit < 0.5 ? -amp : amp);
-            }
-            return 0;
-        });
+        this._lastDigParams = { cleanBits, numBits, Tb, tStart, tEnd, codigo, amp, amiLevels };
+        let values = t.map(time => this._evalBitSignal(time, cleanBits, numBits, Tb, tStart, tEnd, codigo, amp, amiLevels));
 
         this.setOutputData(0, { 
             name: nombre || "d(t)", 
+            sourceNode: this,
             rawBits: cleanBits,
+            numBits: numBits,
+            lineCode: codigo,
+            bitAmp: Math.abs(Number(amp || 0)),
             values: values, 
             discrete: false, 
             isPeriodic: false,
@@ -1024,18 +1208,22 @@
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
     NodoSumador.title = "Sumador Ponderado";
-    NodoSumador.prototype.evalAt = function(time, dt) {
+    NodoSumador.prototype.evalAt = function(time, dt, visited) {
         let in1 = this.getInputData(0);
         let in2 = this.getInputData(1);
         const { k1, k2 } = this.properties;
-        let v1 = (in1 && in1.sourceNode && typeof in1.sourceNode.evalAt === "function") ? in1.sourceNode.evalAt(time, dt) : 0;
-        let v2 = (in2 && in2.sourceNode && typeof in2.sourceNode.evalAt === "function") ? in2.sourceNode.evalAt(time, dt) : 0;
+        let v1 = in1 ? evalSignalAt(in1, time, dt, visited) : 0;
+        let v2 = in2 ? evalSignalAt(in2, time, dt, visited) : 0;
         return k1 * v1 + k2 * v2;
     };
     NodoSumador.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
         let in2 = this.getInputData(1);
-        if (!in1 && !in2) return;
+        if (!in1 && !in2) {
+            this.boxcolor = null;
+            this.setOutputData(0, null);
+            return;
+        }
 
         if (in1 && in2 && in1.discrete !== in2.discrete) {
             this.boxcolor = "#ef4444";
@@ -1045,39 +1233,110 @@
         this.boxcolor = null;
 
         const { k1, k2, nombre } = this.properties;
-        const { dt } = getCurrentTimeVector();
+        const { tMin, dt } = getCurrentTimeVector();
         let v1 = in1 ? in1.values : new Array(N).fill(0);
         let v2 = in2 ? in2.values : new Array(N).fill(0);
-        let isDisc = in1 ? in1.discrete : (in2 ? in2.discrete : false);
+        let isDisc = in1 ? Boolean(in1.discrete) : (in2 ? Boolean(in2.discrete) : false);
+        let isSampled = Boolean((in1 && in1.isSampledSignal) || (in2 && in2.isSampledSignal));
 
         let values = new Array(N);
         for (let i = 0; i < N; i++) values[i] = k1 * v1[i] + k2 * v2[i];
 
-        let stemX = null, stemY = null;
-        if (isDisc && in1 && in1.stemX && in2 && in2.stemX) {
-            let minN = Math.min(in1.stemX[0], in2.stemX[0]);
-            let maxN = Math.max(in1.stemX[in1.stemX.length-1], in2.stemX[in2.stemX.length-1]);
-            stemX = []; stemY = [];
-            for (let n = minN; n <= maxN; n++) {
-                stemX.push(n);
-                let idx1 = in1.stemX.indexOf(n);
-                let idx2 = in2.stemX.indexOf(n);
-                let val1 = idx1 !== -1 ? in1.stemY[idx1] : 0;
-                let val2 = idx2 !== -1 ? in2.stemY[idx2] : 0;
-                stemY.push(k1 * val1 + k2 * val2);
+        let stemX = null, stemY = null, sampleInstants = null;
+        if (isDisc) {
+            if (isSampled) {
+                const map = new Map();
+                const addSamples = (sig, factor) => {
+                    if (!sig) return;
+                    if (Array.isArray(sig.sampleInstants)) {
+                        for (let s of sig.sampleInstants) {
+                            const key = Math.round(s.t * 1e6);
+                            const prev = map.get(key);
+                            map.set(key, { t: s.t, v: (prev ? prev.v : 0) + factor * s.v });
+                        }
+                    } else if (Array.isArray(sig.stemX) && Array.isArray(sig.stemY)) {
+                        for (let i = 0; i < sig.stemX.length; i++) {
+                            const key = Math.round(sig.stemX[i] * 1e6);
+                            const prev = map.get(key);
+                            map.set(key, { t: sig.stemX[i], v: (prev ? prev.v : 0) + factor * sig.stemY[i] });
+                        }
+                    }
+                };
+                addSamples(in1, k1);
+                addSamples(in2, k2);
+                const merged = Array.from(map.values()).sort((a, b) => a.t - b.t);
+                stemX = merged.map(p => p.t);
+                stemY = merged.map(p => p.v);
+                sampleInstants = merged;
+            } else {
+                const map1 = new Map();
+                const map2 = new Map();
+                if (in1 && in1.stemX && in1.stemY) {
+                    for (let i = 0; i < in1.stemX.length; i++) map1.set(in1.stemX[i], in1.stemY[i]);
+                }
+                if (in2 && in2.stemX && in2.stemY) {
+                    for (let i = 0; i < in2.stemX.length; i++) map2.set(in2.stemX[i], in2.stemY[i]);
+                }
+                const allKeys = [...map1.keys(), ...map2.keys()];
+                if (allKeys.length > 0) {
+                    const minN = Math.min(...allKeys);
+                    const maxN = Math.max(...allKeys);
+                    stemX = []; stemY = [];
+                    if (maxN - minN <= 2000) {
+                        for (let n = minN; n <= maxN; n++) {
+                            stemX.push(n);
+                            stemY.push(k1 * (map1.get(n) || 0) + k2 * (map2.get(n) || 0));
+                        }
+                    } else {
+                        const uniq = Array.from(new Set(allKeys)).sort((a, b) => a - b);
+                        for (let n of uniq) {
+                            stemX.push(n);
+                            stemY.push(k1 * (map1.get(n) || 0) + k2 * (map2.get(n) || 0));
+                        }
+                    }
+                }
+            }
+
+            if (stemX && stemY) {
+                values = new Array(N).fill(0);
+                for (let i = 0; i < stemX.length; i++) {
+                    const mappedIdx = Math.round((stemX[i] - tMin) / dt);
+                    if (mappedIdx >= 0 && mappedIdx < N) values[mappedIdx] = stemY[i];
+                }
             }
         }
 
-        this.setOutputData(0, {
+        const outObj = {
             name: nombre || "y_sum",
             sourceNode: this,
             values,
             discrete: isDisc,
+            isSampledSignal: isSampled,
             isPeriodic: (in1 && in1.isPeriodic) || (in2 && in2.isPeriodic),
             stemX,
             stemY,
             dt: dt
-        });
+        };
+        if (isSampled) {
+            outObj.sampleInstants = sampleInstants;
+            outObj.fs_sample = (in1 && in1.fs_sample) || (in2 && in2.fs_sample);
+            outObj.sampledTs = (in1 && in1.sampledTs) || (in2 && in2.sampledTs);
+        }
+        const digSrc = (in1 && (in1.lineCode !== undefined || in1.Tb !== undefined || in1.Rb !== undefined))
+            ? in1
+            : ((in2 && (in2.lineCode !== undefined || in2.Tb !== undefined || in2.Rb !== undefined)) ? in2 : null);
+        if (digSrc && !isDisc) {
+            const digGain = (digSrc === in1) ? k1 : k2;
+            if (digSrc.lineCode !== undefined) outObj.lineCode = digSrc.lineCode;
+            if (digSrc.Tb !== undefined) outObj.Tb = digSrc.Tb;
+            if (digSrc.Rb !== undefined) outObj.Rb = digSrc.Rb;
+            if (digSrc.baudios !== undefined) outObj.baudios = digSrc.baudios;
+            if (digSrc.t_start !== undefined) outObj.t_start = digSrc.t_start;
+            const srcNumBits = digSrc.numBits !== undefined ? digSrc.numBits : (digSrc.rawBits ? digSrc.rawBits.length : undefined);
+            if (srcNumBits !== undefined) outObj.numBits = srcNumBits;
+            if (digSrc.bitAmp !== undefined) outObj.bitAmp = Math.abs(Number(digSrc.bitAmp) * digGain);
+        }
+        this.setOutputData(0, outObj);
     };
     LiteGraph.registerNodeType("Telecom/Sumador", NodoSumador);
 
@@ -1097,18 +1356,22 @@
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
     NodoMultiplicador.title = "Mezclador (k·x1·x2)";
-    NodoMultiplicador.prototype.evalAt = function(time, dt) {
+    NodoMultiplicador.prototype.evalAt = function(time, dt, visited) {
         let in1 = this.getInputData(0);
         let in2 = this.getInputData(1);
         if (!in1 || !in2) return 0;
-        let v1 = (in1.sourceNode && typeof in1.sourceNode.evalAt === "function") ? in1.sourceNode.evalAt(time, dt) : 0;
-        let v2 = (in2.sourceNode && typeof in2.sourceNode.evalAt === "function") ? in2.sourceNode.evalAt(time, dt) : 0;
+        let v1 = evalSignalAt(in1, time, dt, visited);
+        let v2 = evalSignalAt(in2, time, dt, visited);
         return this.properties.gain * v1 * v2;
     };
     NodoMultiplicador.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
         let in2 = this.getInputData(1);
-        if (!in1 || !in2) return;
+        if (!in1 || !in2) {
+            this.boxcolor = null;
+            this.setOutputData(0, null);
+            return;
+        }
 
         if (in1.discrete !== in2.discrete) {
             this.boxcolor = "#ef4444";
@@ -1118,18 +1381,74 @@
         this.boxcolor = null;
 
         const { gain, nombre } = this.properties;
-        const { dt } = getCurrentTimeVector();
-        let values = new Array(N);
-        for (let i = 0; i < N; i++) values[i] = gain * in1.values[i] * in2.values[i];
+        const { tMin, dt } = getCurrentTimeVector();
+        const isDisc = Boolean(in1.discrete);
+        const isSampled = Boolean(in1.isSampledSignal || in2.isSampledSignal);
 
-        this.setOutputData(0, {
+        let values = new Array(N).fill(0);
+        let stemX = null, stemY = null, sampleInstants = null;
+
+        if (isDisc && in1.stemX && in1.stemY && in2.stemX && in2.stemY) {
+            if (isSampled) {
+                const map2 = new Map();
+                for (let j = 0; j < in2.stemX.length; j++) {
+                    map2.set(Math.round(in2.stemX[j] * 1e6), in2.stemY[j]);
+                }
+                const merged = [];
+                for (let i = 0; i < in1.stemX.length; i++) {
+                    const key = Math.round(in1.stemX[i] * 1e6);
+                    if (map2.has(key)) {
+                        merged.push({ t: in1.stemX[i], v: gain * in1.stemY[i] * map2.get(key) });
+                    }
+                }
+                merged.sort((a, b) => a.t - b.t);
+                stemX = merged.map(p => p.t);
+                stemY = merged.map(p => p.v);
+                sampleInstants = merged;
+            } else {
+                const map2 = new Map();
+                for (let j = 0; j < in2.stemX.length; j++) {
+                    map2.set(in2.stemX[j], in2.stemY[j]);
+                }
+                stemX = [];
+                stemY = [];
+                for (let i = 0; i < in1.stemX.length; i++) {
+                    const n = in1.stemX[i];
+                    if (map2.has(n)) {
+                        stemX.push(n);
+                        stemY.push(gain * in1.stemY[i] * map2.get(n));
+                    }
+                }
+                if (stemX.length === 0) {
+                    stemX = [0];
+                    stemY = [0];
+                }
+            }
+            for (let i = 0; i < stemX.length; i++) {
+                const mappedIdx = Math.round((stemX[i] - tMin) / dt);
+                if (mappedIdx >= 0 && mappedIdx < N) values[mappedIdx] = stemY[i];
+            }
+        } else {
+            for (let i = 0; i < N; i++) values[i] = gain * in1.values[i] * in2.values[i];
+        }
+
+        const outObj = {
             name: nombre || "y_mult",
             sourceNode: this,
             values,
-            discrete: in1.discrete,
+            discrete: isDisc,
+            isSampledSignal: isSampled,
+            stemX,
+            stemY,
             isPeriodic: (in1 && in1.isPeriodic) || (in2 && in2.isPeriodic),
             dt: dt
-        });
+        };
+        if (isSampled) {
+            outObj.sampleInstants = sampleInstants;
+            outObj.fs_sample = in1.fs_sample || in2.fs_sample;
+            outObj.sampledTs = in1.sampledTs || in2.sampledTs;
+        }
+        this.setOutputData(0, outObj);
     };
     LiteGraph.registerNodeType("Telecom/Multiplicador", NodoMultiplicador);
 
@@ -1150,7 +1469,11 @@
     NodoConvolucion.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
         let in2 = this.getInputData(1);
-        if (!in1 || !in2) return;
+        if (!in1 || !in2) {
+            this.boxcolor = null;
+            this.setOutputData(0, null);
+            return;
+        }
 
         if (in1.discrete !== in2.discrete) {
             this.boxcolor = "#ef4444";
@@ -1159,25 +1482,60 @@
         }
         this.boxcolor = null;
 
-        const isDisc = in1.discrete;
+        const isDisc = Boolean(in1.discrete);
+        const isSampled = Boolean(in1.isSampledSignal || in2.isSampledSignal);
         const { t, dt, tMin, tMax } = getCurrentTimeVector();
         const { nombre } = this.properties;
 
-        if (isDisc && in1.stemX && in2.stemX) {
+        if (isDisc && isSampled && in1.stemX && in2.stemX) {
+            const outMap = new Map();
+            const x_t = in1.stemX, x_v = in1.stemY;
+            const h_t = in2.stemX, h_v = in2.stemY;
+            for (let i = 0; i < x_t.length; i++) {
+                for (let j = 0; j < h_t.length; j++) {
+                    const tSum = x_t[i] + h_t[j];
+                    const key = Math.round(tSum * 1e6);
+                    const prev = outMap.get(key);
+                    outMap.set(key, { t: tSum, v: (prev ? prev.v : 0) + x_v[i] * h_v[j] });
+                }
+            }
+            const merged = Array.from(outMap.values()).sort((a, b) => a.t - b.t);
+            const y_t = merged.map(p => p.t);
+            const y_v = merged.map(p => p.v);
+            const fullValues = new Array(N).fill(0);
+            for (let i = 0; i < y_t.length; i++) {
+                const mappedIdx = Math.round((y_t[i] - tMin) / dt);
+                if (mappedIdx >= 0 && mappedIdx < N) fullValues[mappedIdx] = y_v[i];
+            }
+            this.setOutputData(0, {
+                name: nombre || "y_conv(t)",
+                values: fullValues,
+                discrete: true,
+                isSampledSignal: true,
+                stemX: y_t,
+                stemY: y_v,
+                sampleInstants: merged,
+                fs_sample: in1.fs_sample || in2.fs_sample,
+                sampledTs: in1.sampledTs || in2.sampledTs,
+                dt: dt
+            });
+        } else if (isDisc && in1.stemX && in2.stemX) {
             let x_n = in1.stemX, x_v = in1.stemY;
             let h_n = in2.stemX, h_v = in2.stemY;
 
-            let minNy = x_n[0] + h_n[0];
-            let maxNy = x_n[x_n.length - 1] + h_n[h_n.length - 1];
-            let lenY = maxNy - minNy + 1;
+            let minNy = Math.round(x_n[0] + h_n[0]);
+            let maxNy = Math.round(x_n[x_n.length - 1] + h_n[h_n.length - 1]);
+            let lenY = Math.max(1, maxNy - minNy + 1);
 
             let y_n = [], y_v = new Array(lenY).fill(0);
             for (let i = 0; i < lenY; i++) y_n.push(minNy + i);
 
             for (let i = 0; i < x_n.length; i++) {
                 for (let j = 0; j < h_n.length; j++) {
-                    let outIdx = (x_n[i] + h_n[j]) - minNy;
-                    y_v[outIdx] += x_v[i] * h_v[j];
+                    let outIdx = Math.round(x_n[i] + h_n[j]) - minNy;
+                    if (outIdx >= 0 && outIdx < lenY) {
+                        y_v[outIdx] += x_v[i] * h_v[j];
+                    }
                 }
             }
 
@@ -1201,15 +1559,7 @@
             const n_steps = Math.floor(T_span / dt_conv);
 
             function sampleSig(sigObj, time) {
-                if (sigObj.sourceNode && typeof sigObj.sourceNode.evalAt === "function") {
-                    return sigObj.sourceNode.evalAt(time, dt_conv);
-                }
-                if (time < tMin) return sigObj.values[0];
-                if (time > tMax) return sigObj.values[sigObj.values.length - 1];
-                let idx = (time - tMin) / dt;
-                let i0 = Math.floor(idx);
-                let frac = idx - i0;
-                return sigObj.values[i0] * (1 - frac) + sigObj.values[i0 + 1] * frac;
+                return evalSignalAt(sigObj, time, dt_conv, null, true);
             }
 
             let y = new Array(N);
@@ -1254,9 +1604,9 @@
             dirtyPlots = true; 
         }, { values: ["Paso Bajo (LPF)", "Paso Alto (HPF)", "Paso Banda (BPF)"] });
         this.wAprox = this.addWidget("combo", "Resp.", "Ideal", v => { that.properties.aprox = v; dirtyPlots = true; }, { values: ["Ideal", "Butterworth"] });
-        this.wFc = this.addWidget("number", "fc (Hz)", 10, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
-        this.wBw = this.addWidget("number", "Ancho Bw (Hz)", 10, v => { that.properties.bw = Math.max(0.1, Number(v)); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
-        this.wGain = this.addWidget("number", "Ganancia", 1.0, v => { that.properties.gain = Number(v); dirtyPlots = true; }, { step: 0.1 });
+        this.wFc = this.addWidget("number", "fc (Hz)", 10, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.fc = Math.max(0.1, n); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
+        this.wBw = this.addWidget("number", "Ancho Bw (Hz)", 10, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.bw = Math.max(0.1, n); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
+        this.wGain = this.addWidget("number", "Ganancia", 1.0, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.gain = n; dirtyPlots = true; }, { step: 0.1 });
         this.wShowH = this.addWidget("toggle", "Ver |H(f)|", true, v => { that.properties.showH = Boolean(v); dirtyPlots = true; });
 
         this.updateWidgetsVisibility();
@@ -1280,28 +1630,99 @@
 
     NodoFiltro.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
-        if (!in1) return;
+        if (!in1) {
+            this.setOutputData(0, null);
+            return;
+        }
 
-        const { tipo, aprox, fc, bw, orden, gain, nombre } = this.properties;
-        const bwVal = Math.max(0.1, Number(bw || 10));
-        const { t, dt } = getCurrentTimeVector();
+        const { tipo, aprox, orden, nombre } = this.properties;
+        const fcVal = Math.max(0.1, Number.isFinite(Number(this.properties.fc)) ? Number(this.properties.fc) : 10);
+        const bwVal = Math.max(0.1, Number.isFinite(Number(this.properties.bw)) ? Number(this.properties.bw) : 10);
+        const ordenVal = Math.max(1, Number.isFinite(Number(orden)) ? Number(orden) : 4);
+        const gainVal = Number.isFinite(Number(this.properties.gain)) ? Number(this.properties.gain) : 1.0;
+        const { t, dt, T } = getCurrentTimeVector();
+        const fNyq = 0.5 / dt;
+        const sincNorm = (arg) => Math.abs(arg) < 1e-6 ? 1.0 : Math.sin(Math.PI * arg) / (Math.PI * arg);
 
         let y = new Array(N).fill(0);
         if (in1.isSampledSignal && in1.sampleInstants) {
-            const Ts = in1.sampledTs;
+            const Ts = in1.sampledTs || (1 / (in1.fs_sample || 20));
             const samples = in1.sampleInstants;
-            y = t.map(time => {
-                let acc = 0;
-                for (let s of samples) {
-                    let arg = (time - s.t) / Ts;
-                    let sincVal = Math.abs(arg) < 1e-6 ? 1 : Math.sin(Math.PI * arg) / (Math.PI * arg);
-                    acc += s.v * sincVal;
+
+            if (aprox === "Ideal") {
+                for (let n = 0; n < N; n++) {
+                    const time = t[n];
+                    let acc = 0;
+                    for (let i = 0; i < samples.length; i++) {
+                        const tau = time - samples[i].t;
+                        let hVal = 0;
+                        if (tipo === "Paso Bajo (LPF)") {
+                            const fEff = Math.min(fcVal, fNyq);
+                            hVal = 2 * fEff * sincNorm(2 * fEff * tau);
+                        } else if (tipo === "Paso Alto (HPF)") {
+                            const fEff = Math.min(fcVal, fNyq);
+                            hVal = 2 * fNyq * sincNorm(2 * fNyq * tau) - 2 * fEff * sincNorm(2 * fEff * tau);
+                        } else if (tipo === "Paso Banda (BPF)") {
+                            const f1 = Math.max(0, fcVal - bwVal / 2);
+                            const f2 = Math.min(fNyq, fcVal + bwVal / 2);
+                            if (f2 > f1) {
+                                hVal = 2 * f2 * sincNorm(2 * f2 * tau) - 2 * f1 * sincNorm(2 * f1 * tau);
+                            }
+                        }
+                        acc += samples[i].v * hVal;
+                    }
+                    y[n] = acc * Ts * gainVal;
                 }
-                return acc * gain;
-            });
+            } else {
+                const isHPF = (tipo === "Paso Alto (HPF)");
+                const N_FILT = 301;
+                const df_filt = fNyq / (N_FILT - 1);
+                const tauMax = Math.min(T, 4.0);
+                const dTau = Math.max(dt * 0.25, 0.001);
+                const M_TAB = Math.max(2, Math.ceil(tauMax / dTau) + 1);
+                const hTab = new Float64Array(M_TAB);
+
+                for (let j = 0; j < M_TAB; j++) {
+                    const tau = j * dTau;
+                    let sum = 0;
+                    for (let i = 0; i < N_FILT; i++) {
+                        const f_val = i * df_filt;
+                        let H_val = evaluateFilterH(f_val, tipo, aprox, fcVal, bwVal, ordenVal, gainVal);
+                        if (isHPF) H_val = gainVal - H_val;
+                        const weight = (i === 0 || i === N_FILT - 1) ? 0.5 : 1.0;
+                        sum += 2 * weight * H_val * Math.cos(2 * Math.PI * f_val * tau) * df_filt;
+                    }
+                    hTab[j] = sum;
+                }
+
+                for (let n = 0; n < N; n++) {
+                    const time = t[n];
+                    let acc = 0;
+                    for (let i = 0; i < samples.length; i++) {
+                        const absTau = Math.abs(time - samples[i].t);
+                        let hSmooth = 0;
+                        if (absTau < tauMax) {
+                            const idx = absTau / dTau;
+                            const i0 = Math.floor(idx);
+                            if (i0 >= M_TAB - 1) {
+                                hSmooth = hTab[M_TAB - 1];
+                            } else {
+                                const frac = idx - i0;
+                                hSmooth = hTab[i0] * (1 - frac) + hTab[i0 + 1] * frac;
+                            }
+                        }
+                        const hVal = isHPF
+                            ? (2 * gainVal * fNyq * sincNorm(2 * fNyq * (time - samples[i].t)) - hSmooth)
+                            : hSmooth;
+                        acc += samples[i].v * hVal;
+                    }
+                    y[n] = acc * Ts;
+                }
+            }
         } else {
+            const isHPF = (tipo === "Paso Alto (HPF)");
             const N_FILT = 801;
-            const F_FILT_MAX = 150;
+            const F_FILT_MAX = fNyq;
             const df_filt = F_FILT_MAX / (N_FILT - 1);
             const M = 150;
             const h = new Array(2 * M + 1).fill(0);
@@ -1310,8 +1731,9 @@
                 let tau = k * dt, sum = 0;
                 for (let i = 0; i < N_FILT; i++) {
                     let f_val = i * df_filt;
-                    let H_val = evaluateFilterH(f_val, tipo, aprox, fc, bwVal, orden, gain);
-                    let weight = (i === 0) ? 0.5 : 1.0;
+                    let H_val = evaluateFilterH(f_val, tipo, aprox, fcVal, bwVal, ordenVal, gainVal);
+                    if (isHPF) H_val = gainVal - H_val;
+                    let weight = (i === 0 || i === N_FILT - 1) ? 0.5 : 1.0;
                     sum += 2 * weight * H_val * Math.cos(2 * Math.PI * f_val * tau) * df_filt;
                 }
                 h[k + M] = sum;
@@ -1324,18 +1746,33 @@
                     if (in1.values[k] === 0) continue;
                     acc += in1.values[k] * h[n - k + M];
                 }
-                y[n] = acc * dt;
+                const convVal = acc * dt;
+                y[n] = isHPF ? (gainVal * in1.values[n] - convVal) : convVal;
             }
         }
 
-        this.setOutputData(0, {
+        const outObj = {
             name: nombre || "y_filt(t)",
             values: y,
             discrete: false,
             isPeriodic: in1.isPeriodic,
-            filterParams: { tipo, aprox, fc, bw: bwVal, orden, gain, showH: this.properties.showH },
+            filterParams: { tipo, aprox, fc: fcVal, bw: bwVal, orden: ordenVal, gain: gainVal, showH: this.properties.showH },
             dt: dt
-        });
+        };
+        if (in1.fromChannel) outObj.fromChannel = true;
+        if (in1.Tb !== undefined) outObj.Tb = in1.Tb;
+        if (in1.Rb !== undefined) outObj.Rb = in1.Rb;
+        if (in1.baudios !== undefined) outObj.baudios = in1.baudios;
+        if (in1.t_start !== undefined) outObj.t_start = in1.t_start;
+        const srcNumBits = in1.numBits !== undefined ? in1.numBits : (in1.rawBits ? in1.rawBits.length : undefined);
+        if (srcNumBits !== undefined) outObj.numBits = srcNumBits;
+        if (in1.lineCode !== undefined) outObj.lineCode = in1.lineCode;
+        if (in1.bitAmp !== undefined) {
+            outObj.bitAmp = Math.abs(Number(in1.bitAmp) * gainVal);
+        } else if (in1.rawBits !== undefined || in1.lineCode !== undefined) {
+            outObj.bitAmp = Math.abs(gainVal);
+        }
+        this.setOutputData(0, outObj);
     };
     LiteGraph.registerNodeType("Telecom/Filtro", NodoFiltro);
 
@@ -1354,9 +1791,20 @@
     NodoMuestreo.title = "Muestreo Ideal (xs)";
     NodoMuestreo.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
-        if (!in1) return;
+        if (!in1) {
+            this.boxcolor = null;
+            this.setOutputData(0, null);
+            return;
+        }
+        if (in1.discrete && !in1.isSampledSignal) {
+            this.boxcolor = "#ef4444";
+            this.setOutputData(0, null);
+            return;
+        }
+        this.boxcolor = null;
         
-        const fs_s = Math.max(0.1, this.properties.fs_sample);
+        const rawFs = Number(this.properties.fs_sample);
+        const fs_s = Math.max(0.1, Math.min(5000, Number.isFinite(rawFs) ? rawFs : 20));
         const Ts = 1 / fs_s;
         const { tMin, tMax, dt } = getCurrentTimeVector();
         const { nombre } = this.properties;
@@ -1367,17 +1815,16 @@
         const maxN = Math.floor(Math.max(Math.abs(tMin), Math.abs(tMax)) / Ts) + 2;
         for (let n = -maxN; n <= maxN; n++) {
             let tSample = n * Ts;
-            if (tSample >= tMin && tSample <= tMax) {
-                let exactIdx = (tSample - tMin) / dt;
-                let i0 = Math.floor(exactIdx);
-                if (i0 >= 0 && i0 < N - 1) {
-                    let frac = exactIdx - i0;
-                    let val = in1.values[i0] * (1 - frac) + in1.values[i0 + 1] * frac;
-                    sampledValues[Math.round(exactIdx)] = val;
-                    customX.push(tSample);
-                    customY.push(val);
-                    sampleInstants.push({ t: tSample, v: val });
+            if (tSample >= tMin - 1e-12 && tSample <= tMax + 1e-12) {
+                const tEval = Math.max(tMin, Math.min(tMax, tSample));
+                const val = evalSignalAt(in1, tEval, dt);
+                const mappedIdx = Math.round((tEval - tMin) / dt);
+                if (mappedIdx >= 0 && mappedIdx < N) {
+                    sampledValues[mappedIdx] = val;
                 }
+                customX.push(tEval);
+                customY.push(val);
+                sampleInstants.push({ t: tEval, v: val });
             }
         }
 
@@ -1413,7 +1860,8 @@
         const that = this;
         this.wName = this.addWidget("text", "Etiqueta", "xq(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.wNiveles = this.addWidget("number", "N.º Niveles (L)", 8, v => {
-            that.properties.niveles = Math.max(2, Math.min(1024, Math.round(Number(v))));
+            const n = Number(v);
+            if (Number.isFinite(n)) that.properties.niveles = Math.max(2, Math.min(1024, Math.round(n)));
             dirtyPlots = true;
         }, { min: 2, max: 1024, step: 1 });
         this.wTipo = this.addWidget("combo", "Tipo Cuantiz.", "Uniforme Midrise", v => {
@@ -1431,15 +1879,18 @@
             ]
         });
         this.wVmax = this.addWidget("number", "Rango ±Vmax (V)", 1.0, v => {
-            that.properties.vMax = Math.max(0.01, Number(v));
+            const n = Number(v);
+            if (Number.isFinite(n)) that.properties.vMax = Math.max(0.01, n);
             dirtyPlots = true;
         }, { min: 0.01, step: 0.1 });
         this.wMu = this.addWidget("number", "Parámetro μ", 255, v => {
-            that.properties.mu = Math.max(1, Number(v));
+            const n = Number(v);
+            if (Number.isFinite(n)) that.properties.mu = Math.max(1, n);
             dirtyPlots = true;
         }, { min: 1, step: 10 });
         this.wLeyA = this.addWidget("number", "Parámetro A", 87.6, v => {
-            that.properties.leyA = Math.max(1, Number(v));
+            const n = Number(v);
+            if (Number.isFinite(n)) that.properties.leyA = Math.max(1, n);
             dirtyPlots = true;
         }, { min: 1, step: 5 });
         this.wVerTabla = this.addWidget("button", "📈 Ver Característica y Niveles", null, () => {
@@ -1513,8 +1964,8 @@
                 const kMin = -Math.floor(L / 2);
                 const k = kMin + idx;
                 uQuant = k * deltaU;
-                uLow = Math.max(-1.0, (k - 0.5) * deltaU);
-                uHigh = Math.min(1.0, (k + 0.5) * deltaU);
+                uLow = (idx === 0) ? -1.0 : Math.max(-1.0, (k - 0.5) * deltaU);
+                uHigh = (idx === L - 1) ? 1.0 : Math.min(1.0, (k + 0.5) * deltaU);
             }
 
             const yVal = expandU(uQuant);
@@ -2178,10 +2629,14 @@
 
         if (!qMeta) {
             const srcArr = (in1.discrete && Array.isArray(in1.stemY)) ? in1.stemY : (in1.values || []);
-            const uniqueSet = new Set(srcArr.map(v => Number(v.toFixed(5))));
+            const normVal = v => {
+                const num = Number(v);
+                return Number((Number.isFinite(num) ? num : 0).toFixed(5));
+            };
+            const uniqueSet = new Set(srcArr.map(normVal));
             detectedLevels = Math.max(2, uniqueSet.size);
             const sortedLevels = Array.from(uniqueSet).sort((a, b) => a - b);
-            indices = srcArr.map(v => Math.max(0, sortedLevels.indexOf(Number(v.toFixed(5)))));
+            indices = srcArr.map(v => Math.max(0, sortedLevels.indexOf(normVal(v))));
             sampleTimes = (in1.discrete && Array.isArray(in1.stemX)) ? in1.stemX : null;
         }
 
@@ -2243,10 +2698,12 @@
 
         let outValues = t.map(time => {
             if (numBitsTotal === 0 || time < tStart || time >= tEnd) return 0;
-            let bitIdx = Math.floor((time - tStart) / Tb);
+            const rawIdx = (time - tStart) / Tb;
+            let bitIdx = Math.floor(rawIdx + 1e-12);
             if (bitIdx >= numBitsTotal) bitIdx = numBitsTotal - 1;
+            if (bitIdx < 0) bitIdx = 0;
             let bit = fullBitStr[bitIdx] === "1" ? 1 : 0;
-            let posInBit = ((time - tStart) % Tb) / Tb;
+            let posInBit = Math.max(0, Math.min(1 - 1e-12, rawIdx - bitIdx));
 
             if (codigo === "NRZ Unipolar (0/1)") {
                 return bit ? amp : 0;
@@ -2277,6 +2734,9 @@
         this.setOutputData(0, {
             name: nombre,
             rawBits: fullBitStr,
+            numBits: fullBitStr.length,
+            lineCode: codigo,
+            bitAmp: Math.abs(Number(amp || 0)),
             values: outValues,
             discrete: false,
             isPeriodic: false,
@@ -2420,6 +2880,22 @@
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorAM.title = "Modulador AM";
+    NodoModuladorAM.prototype.evalAt = function(time, dt, visited) {
+        let in1 = this.getInputData(0);
+        if (!in1) return 0;
+        const { fc, mu, Ac } = this.properties;
+        let ka = (this.amStats && this.amStats.hasInput) ? this.amStats.ka : 0;
+        if ((!this.amStats || !this.amStats.hasInput) && Array.isArray(in1.values)) {
+            let Am = 0;
+            for (let i = 0; i < in1.values.length; i++) {
+                const a = Math.abs(in1.values[i]);
+                if (a > Am) Am = a;
+            }
+            ka = Am > 1e-9 ? (mu / Am) : 0;
+        }
+        const mVal = evalSignalAt(in1, time, dt, visited);
+        return Ac * (1 + ka * mVal) * Math.cos(2 * Math.PI * fc * time);
+    };
     NodoModuladorAM.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
         if (!in1 || !in1.values) {
@@ -2443,7 +2919,7 @@
         this.amStats = { Am: Am, ka: ka, hasInput: true };
 
         let values = t.map((time, idx) => Ac * (1 + ka * m[idx]) * Math.cos(2 * Math.PI * fc * time));
-        this.setOutputData(0, { name: nombre || "s_AM(t)", values, discrete: false, isPeriodic: true, dt: dt });
+        this.setOutputData(0, { name: nombre || "s_AM(t)", sourceNode: this, values, discrete: false, isPeriodic: true, dt: dt });
     };
     NodoModuladorAM.prototype.onDrawForeground = function(ctx) {
         if (this.flags.collapsed) return;
@@ -2496,7 +2972,10 @@
 
     NodoModuladorFM.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
-        if (!in1) return;
+        if (!in1 || !in1.values) {
+            this.setOutputData(0, null);
+            return;
+        }
 
         const { fc, beta, Ac, nombre } = this.properties;
         const { t, dt } = getCurrentTimeVector();
@@ -2556,9 +3035,19 @@
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorPM.title = "Modulador PM";
+    NodoModuladorPM.prototype.evalAt = function(time, dt, visited) {
+        let in1 = this.getInputData(0);
+        if (!in1) return 0;
+        const { fc, kp, Ac } = this.properties;
+        const mVal = evalSignalAt(in1, time, dt, visited);
+        return Ac * Math.cos(2 * Math.PI * fc * time + kp * mVal);
+    };
     NodoModuladorPM.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
-        if (!in1) return;
+        if (!in1 || !in1.values) {
+            this.setOutputData(0, null);
+            return;
+        }
 
         const { fc, kp, Ac, nombre } = this.properties;
         const { t, dt } = getCurrentTimeVector();
@@ -2568,6 +3057,7 @@
 
         this.setOutputData(0, {
             name: nombre || "s_PM(t)",
+            sourceNode: this,
             values: values,
             discrete: false,
             isPeriodic: in1.isPeriodic !== undefined ? in1.isPeriodic : true,
@@ -2657,9 +3147,45 @@
     }
     NodoModuladorQAM.title = "Modulador QAM";
 
+    NodoModuladorQAM.prototype._getIQ = function(symbolBits, kBits) {
+        if (kBits === 2) {
+            const gray4 = {
+                "00": [-1, -1], "01": [-1, 1],
+                "11": [1, 1],   "10": [1, -1]
+            };
+            return gray4[symbolBits] || [0, 0];
+        } else {
+            const gray16_1D = { "00": -3, "01": -1, "11": 1, "10": 3 };
+            const bi = symbolBits.substring(0, 2);
+            const bq = symbolBits.substring(2, 4);
+            const I = (gray16_1D[bi] !== undefined ? gray16_1D[bi] : 0) / Math.sqrt(10);
+            const Q = (gray16_1D[bq] !== undefined ? gray16_1D[bq] : 0) / Math.sqrt(10);
+            return [I, Q];
+        }
+    };
+
+    NodoModuladorQAM.prototype.evalAt = function(time, dt) {
+        const p = this._lastModParams;
+        if (!p || time < p.tStart || time >= p.tEnd) return 0;
+        let symIdx = Math.floor((time - p.tStart) / p.Ts + 1e-12);
+        if (symIdx < 0) symIdx = 0;
+        if (symIdx >= p.numSymbols) symIdx = p.numSymbols - 1;
+        const symBits = p.bitStr.substring(symIdx * p.kBits, (symIdx + 1) * p.kBits);
+        const [I, Q] = this._getIQ(symBits, p.kBits);
+        return p.Ac * (I * Math.cos(2 * Math.PI * p.fc * time) - Q * Math.sin(2 * Math.PI * p.fc * time));
+    };
+
     NodoModuladorQAM.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
-        let bitStr = (in1 && in1.rawBits) ? in1.rawBits : (this.properties.bits || "11010010");
+        let bitStr;
+        if (in1 && !in1.fromChannel && in1.rawBits) {
+            bitStr = in1.rawBits;
+        } else if (in1 && in1.values) {
+            const extracted = extractBitstreamFromSignal(in1);
+            bitStr = extracted || (this.properties.bits || "11010010");
+        } else {
+            bitStr = this.properties.bits || "11010010";
+        }
         bitStr = bitStr.replace(/[^01]/g, "");
         if (bitStr.length === 0) bitStr = "1101";
 
@@ -2669,29 +3195,13 @@
         const kBits = (tipo === "4-QAM (QPSK)") ? 2 : 4;
         const { t, dt } = getCurrentTimeVector();
 
-        const gray4 = {
-            "00": [-1, -1], "01": [-1, 1],
-            "11": [1, 1],   "10": [1, -1]
-        };
-
-        const gray16_1D = { "00": -3, "01": -1, "11": 1, "10": 3 };
-
-        function getIQ(symbolBits) {
-            if (kBits === 2) {
-                return gray4[symbolBits] || [0, 0];
-            } else {
-                let bi = symbolBits.substring(0, 2);
-                let bq = symbolBits.substring(2, 4);
-                let I = (gray16_1D[bi] !== undefined ? gray16_1D[bi] : 0) / Math.sqrt(10);
-                let Q = (gray16_1D[bq] !== undefined ? gray16_1D[bq] : 0) / Math.sqrt(10);
-                return [I, Q];
-            }
-        }
-
         let numSymbols = Math.floor(bitStr.length / kBits);
         if (numSymbols === 0) {
             bitStr = bitStr.padEnd(kBits, "0");
             numSymbols = 1;
+        } else if (bitStr.length % kBits !== 0) {
+            bitStr = bitStr.padEnd(Math.ceil(bitStr.length / kBits) * kBits, "0");
+            numSymbols = bitStr.length / kBits;
         }
 
         let tStart = (in1 && in1.t_start !== undefined) ? in1.t_start : 0;
@@ -2700,22 +3210,24 @@
         let symList = [];
         for (let m = 0; m < numSymbols; m++) {
             let symBits = bitStr.substring(m * kBits, (m + 1) * kBits);
-            let [I, Q] = getIQ(symBits);
+            let [I, Q] = this._getIQ(symBits, kBits);
             symList.push({ index: m + 1, bits: symBits, I: I, Q: Q });
         }
         this.modSymbols = symList;
+        this._lastModParams = { tStart, tEnd, Ts, numSymbols, kBits, bitStr, fc, Ac };
 
         let values = t.map(time => {
             if (time < tStart || time >= tEnd) return 0;
-            let symIdx = Math.floor((time - tStart) / Ts);
+            let symIdx = Math.floor((time - tStart) / Ts + 1e-12);
             if (symIdx >= numSymbols) symIdx = numSymbols - 1;
             let symBits = bitStr.substring(symIdx * kBits, (symIdx + 1) * kBits);
-            let [I, Q] = getIQ(symBits);
+            let [I, Q] = this._getIQ(symBits, kBits);
             return Ac * (I * Math.cos(2 * Math.PI * fc * time) - Q * Math.sin(2 * Math.PI * fc * time));
         });
 
         this.setOutputData(0, {
             name: nombre || "s_QAM(t)",
+            sourceNode: this,
             values: values,
             discrete: false,
             isPeriodic: false,
@@ -2725,6 +3237,7 @@
                 Ac: Ac,
                 tipo: tipo,
                 tStart: tStart,
+                tDelay: 0,
                 numSymbols: numSymbols,
                 Ts: Ts,
                 bitStr: bitStr
@@ -2844,62 +3357,122 @@
         return mean + stdev * randStdNormal;
     }
 
+    NodoCanal.prototype.evalAt = function(time, dt, visited) {
+        let in1 = this.getInputData(0);
+        if (!in1) return 0;
+        const alpha = Number.isFinite(Number(this.properties.atenuacion)) ? Number(this.properties.atenuacion) : 1.0;
+        const sigma = Number.isFinite(Number(this.properties.ruido)) ? Number(this.properties.ruido) : 0.0;
+        const tDelay = Number.isFinite(Number(this.properties.retardo)) ? Number(this.properties.retardo) : 0.0;
+
+        let val = alpha * evalSignalAt(in1, time - tDelay, dt, visited);
+        if (sigma > 0 && Array.isArray(this._lastNoise)) {
+            const { tMin, tMax, dt: curDt } = getCurrentTimeVector();
+            if (time >= tMin && time <= tMax) {
+                const idx = (time - tMin) / (curDt || dt || 0.01);
+                const i0 = Math.floor(idx);
+                if (i0 >= 0 && i0 < N - 1) {
+                    const frac = idx - i0;
+                    val += this._lastNoise[i0] * (1 - frac) + this._lastNoise[i0 + 1] * frac;
+                } else if (i0 === N - 1) {
+                    val += this._lastNoise[N - 1];
+                }
+            }
+        }
+        return val;
+    };
+
     NodoCanal.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
         if (!in1 || !in1.values) {
+            this._lastNoise = null;
             this.setOutputData(0, null);
             return;
         }
 
         const { atenuacion, ruido, retardo, nombre } = this.properties;
-        const alpha = Number(atenuacion !== undefined ? atenuacion : 1.0);
-        const sigma = Number(ruido !== undefined ? ruido : 0.0);
-        const tDelay = Number(retardo !== undefined ? retardo : 0.0);
-        const { t, dt, tMin, tMax } = getCurrentTimeVector();
+        const alpha = Number.isFinite(Number(atenuacion)) ? Number(atenuacion) : 1.0;
+        const sigma = Number.isFinite(Number(ruido)) ? Number(ruido) : 0.0;
+        const tDelay = Number.isFinite(Number(retardo)) ? Number(retardo) : 0.0;
+        const { t, dt, tMin } = getCurrentTimeVector();
 
-        const xIn = in1.values;
-        let outValues = new Array(N);
+        let outValues = new Array(N).fill(0);
+        let noiseArr = sigma > 0 ? new Array(N).fill(0) : null;
 
-        for (let i = 0; i < N; i++) {
-            let curTime = t[i];
-            let origTime = curTime - tDelay;
-            let val = 0;
-
-            if (in1.sourceNode && typeof in1.sourceNode.evalAt === "function") {
-                val = in1.sourceNode.evalAt(origTime, dt);
+        let stemX = null, stemY = null, sampleInstants = null;
+        if (in1.discrete && Array.isArray(in1.stemX) && Array.isArray(in1.stemY)) {
+            if (in1.isSampledSignal && Array.isArray(in1.sampleInstants)) {
+                sampleInstants = in1.sampleInstants.map(s => {
+                    const nVal = sigma > 0 ? gaussianRandom(0, sigma) : 0;
+                    return { t: s.t + tDelay, v: alpha * s.v + nVal };
+                });
+                stemX = sampleInstants.map(s => s.t);
+                stemY = sampleInstants.map(s => s.v);
             } else {
-                if (origTime >= tMin && origTime <= tMax) {
-                    let idx = (origTime - tMin) / dt;
-                    let i0 = Math.floor(idx);
-                    if (i0 >= 0 && i0 < N - 1) {
-                        let frac = idx - i0;
-                        val = xIn[i0] * (1 - frac) + xIn[i0 + 1] * frac;
-                    } else if (i0 === N - 1) {
-                        val = xIn[N - 1];
+                const nDelay = Math.round(tDelay);
+                stemX = in1.stemX.map(x => x + nDelay);
+                stemY = in1.stemY.map(y => alpha * y + (sigma > 0 ? gaussianRandom(0, sigma) : 0));
+            }
+            for (let i = 0; i < stemX.length; i++) {
+                const mappedIdx = Math.round((stemX[i] - tMin) / dt);
+                if (mappedIdx >= 0 && mappedIdx < N) outValues[mappedIdx] = stemY[i];
+            }
+            if (sigma > 0) {
+                for (let i = 0; i < N; i++) {
+                    if (outValues[i] === 0) {
+                        const n = gaussianRandom(0, sigma);
+                        noiseArr[i] = n;
+                        outValues[i] = n;
                     }
                 }
             }
-
-            let noise = sigma > 0 ? gaussianRandom(0, sigma) : 0;
-            outValues[i] = alpha * val + noise;
+        } else {
+            for (let i = 0; i < N; i++) {
+                const origTime = t[i] - tDelay;
+                const val = evalSignalAt(in1, origTime, dt);
+                const noise = sigma > 0 ? gaussianRandom(0, sigma) : 0;
+                if (noiseArr) noiseArr[i] = noise;
+                outValues[i] = alpha * val + noise;
+            }
         }
+        this._lastNoise = noiseArr;
 
         let updatedMeta = null;
         if (in1.qamMeta) {
             updatedMeta = { ...in1.qamMeta };
             updatedMeta.Ac = (updatedMeta.Ac || 1.0) * alpha;
             updatedMeta.tStart = (updatedMeta.tStart || 0.0) + tDelay;
+            updatedMeta.tDelay = (updatedMeta.tDelay || 0.0) + tDelay;
         }
 
-        this.setOutputData(0, {
+        const outObj = {
             name: nombre || "s_canal(t)",
             sourceNode: this,
+            fromChannel: true,
             values: outValues,
-            discrete: in1.discrete || false,
+            discrete: Boolean(in1.discrete),
+            isSampledSignal: Boolean(in1.isSampledSignal),
             isPeriodic: in1.isPeriodic,
             qamMeta: updatedMeta,
             dt: dt
-        });
+        };
+        if (stemX && stemY) {
+            outObj.stemX = stemX;
+            outObj.stemY = stemY;
+        }
+        if (sampleInstants) outObj.sampleInstants = sampleInstants;
+        if (in1.fs_sample !== undefined) outObj.fs_sample = in1.fs_sample;
+        if (in1.sampledTs !== undefined) outObj.sampledTs = in1.sampledTs;
+        const srcNumBits = in1.numBits !== undefined ? in1.numBits : (in1.rawBits ? in1.rawBits.length : undefined);
+        if (srcNumBits !== undefined) outObj.numBits = srcNumBits;
+        if (in1.lineCode !== undefined) outObj.lineCode = in1.lineCode;
+        const srcAmp = in1.bitAmp !== undefined ? in1.bitAmp : ((in1.rawBits !== undefined || in1.lineCode !== undefined) ? 1.0 : undefined);
+        if (srcAmp !== undefined) outObj.bitAmp = Math.abs(srcAmp * alpha);
+        if (in1.Tb !== undefined) outObj.Tb = in1.Tb;
+        if (in1.Rb !== undefined) outObj.Rb = in1.Rb;
+        if (in1.baudios !== undefined) outObj.baudios = in1.baudios;
+        if (in1.t_start !== undefined) outObj.t_start = in1.t_start + tDelay;
+
+        this.setOutputData(0, outObj);
     };
     LiteGraph.registerNodeType("Telecom/Canal", NodoCanal);
 
@@ -2935,13 +3508,16 @@
     }
     NodoDemoduladorQAM.title = "Demodulador QAM";
 
-    function findQamMetaInSignal(sig) {
+    function findQamMetaInSignal(sig, visited) {
         if (!sig) return null;
         if (sig.qamMeta) return sig.qamMeta;
         if (sig.sourceNode && sig.sourceNode.inputs) {
+            const vSet = visited || new Set();
+            if (vSet.has(sig.sourceNode)) return null;
+            vSet.add(sig.sourceNode);
             for (let i = 0; i < sig.sourceNode.inputs.length; i++) {
                 let subSig = sig.sourceNode.getInputData(i);
-                let found = findQamMetaInSignal(subSig);
+                let found = findQamMetaInSignal(subSig, vSet);
                 if (found) return found;
             }
         }
@@ -2981,6 +3557,7 @@
         let tStart = Number(t_start || 0);
         let totalSyms = Math.max(1, Math.round(Number(num_sym || 4)));
         const Ac_ref = (meta && meta.Ac) ? meta.Ac : 1.0;
+        const tDelay = (meta && meta.tDelay) ? meta.tDelay : 0.0;
 
         const const4 = [
             { bits: "00", I: -1, Q: -1 },
@@ -3003,25 +3580,13 @@
         }
         const activeConstellation = (kBits === 2) ? const4 : const16;
 
-        function sampleReceivedAt(timeVal) {
-            if (in1.sourceNode && typeof in1.sourceNode.evalAt === "function") {
-                return in1.sourceNode.evalAt(timeVal, dt);
-            }
-            if (timeVal < tMin || timeVal > tMax) return 0;
-            let idx = (timeVal - tMin) / dt;
-            let i0 = Math.floor(idx);
-            if (i0 < 0) return x[0];
-            if (i0 >= N - 1) return x[N - 1];
-            let frac = idx - i0;
-            return x[i0] * (1 - frac) + x[i0 + 1] * frac;
-        }
-
         let symbolsList = [];
         let recoveredBits = "";
 
         for (let m = 0; m < totalSyms; m++) {
             let symT0 = tStart + m * Ts;
             let symT1 = symT0 + Ts;
+            if (symT1 <= tMin || symT0 >= tMax) continue;
 
             let Scc = 0, Sss = 0, Scs = 0;
             let Sxc = 0, Sxs = 0;
@@ -3034,8 +3599,9 @@
                 let ti = t[i];
                 if (ti >= symT0 + dt * 0.25 && ti <= symT1 - dt * 0.25) {
                     let val = x[i];
-                    let c = Math.cos(2 * Math.PI * fc * ti);
-                    let s = -Math.sin(2 * Math.PI * fc * ti);
+                    let phaseArg = 2 * Math.PI * fc * (ti - tDelay);
+                    let c = Math.cos(phaseArg);
+                    let s = -Math.sin(phaseArg);
 
                     Scc += c * c;
                     Sss += s * s;
@@ -3055,18 +3621,31 @@
             }
 
             if (count < 8) {
+                Scc = 0; Sss = 0; Scs = 0; Sxc = 0; Sxs = 0;
+                Sxc1 = 0; Sxs1 = 0; Scc1 = 0; Sss1 = 0;
+                Sxc2 = 0; Sxs2 = 0; Scc2 = 0; Sss2 = 0;
+                count = 0;
                 const M_SUB = 64;
                 const dSub = Ts / M_SUB;
                 for (let k = 1; k < M_SUB; k++) {
                     let ti = symT0 + k * dSub;
-                    let val = sampleReceivedAt(ti);
-                    let c = Math.cos(2 * Math.PI * fc * ti);
-                    let s = -Math.sin(2 * Math.PI * fc * ti);
+                    if (ti < tMin || ti > tMax) continue;
+                    let val = evalSignalAt(in1, ti, dt);
+                    let phaseArg = 2 * Math.PI * fc * (ti - tDelay);
+                    let c = Math.cos(phaseArg);
+                    let s = -Math.sin(phaseArg);
                     Scc += c * c;
                     Sss += s * s;
                     Scs += c * s;
                     Sxc += val * c;
                     Sxs += val * s;
+                    if (ti < symMid) {
+                        Sxc1 += val * c; Sxs1 += val * s;
+                        Scc1 += c * c;   Sss1 += s * s;
+                    } else {
+                        Sxc2 += val * c; Sxs2 += val * s;
+                        Scc2 += c * c;   Sss2 += s * s;
+                    }
                     count++;
                 }
             }
@@ -3135,12 +3714,13 @@
 
         let outValues = t.map(time => {
             if (time < tStart || time >= tEnd || numBits === 0) return 0;
-            let bIdx = Math.floor((time - tStart) / Tb);
+            let bIdx = Math.floor((time - tStart) / Tb + 1e-12);
             if (bIdx >= numBits) bIdx = numBits - 1;
+            if (bIdx < 0) bIdx = 0;
             return recoveredBits[bIdx] === "1" ? 1.0 : 0.0;
         });
 
-        const neededHeight = 350 + Math.max(1, symbolsList.length) * 16;
+        const neededHeight = 382 + Math.max(1, symbolsList.length) * 16;
         if (this.size[1] !== neededHeight) {
             this.size[1] = neededHeight;
             this.setDirtyCanvas(true, true);
@@ -3149,6 +3729,9 @@
         this.setOutputData(0, {
             name: nombre || "d_rec(t)",
             rawBits: recoveredBits,
+            numBits: recoveredBits.length,
+            lineCode: "NRZ Unipolar (0/1)",
+            bitAmp: 1.0,
             values: outValues,
             discrete: false,
             isPeriodic: false,
@@ -3316,34 +3899,68 @@
         this.setDirtyCanvas(true, true);
     };
 
-    function extractBitstreamFromSignal(sig, umbral = 0.5) {
+    function extractBitstreamFromSignal(sig, umbral = 0.5, refSig = null) {
         if (!sig) return "";
-        if (sig.rawBits && typeof sig.rawBits === "string" && sig.rawBits.length > 0) {
+        if (!sig.fromChannel && sig.rawBits && typeof sig.rawBits === "string" && sig.rawBits.length > 0) {
             return sig.rawBits;
         }
-        if (sig.qamMeta && sig.qamMeta.bitStr) {
+        if (!sig.fromChannel && sig.qamMeta && sig.qamMeta.bitStr) {
             return sig.qamMeta.bitStr;
         }
         if (sig.values && sig.values.length > 0) {
-            const Tb = sig.Tb || (sig.Rb ? 1.0 / sig.Rb : 0.5);
-            const tStart = sig.t_start !== undefined ? sig.t_start : 0;
-            const { t } = getCurrentTimeVector();
+            const Tb = sig.Tb || (sig.Rb ? 1.0 / sig.Rb : null) ||
+                (refSig ? (refSig.Tb || (refSig.Rb ? 1.0 / refSig.Rb : null)) : null) || 0.5;
+            const tStart = sig.t_start !== undefined ? sig.t_start : (refSig && refSig.t_start !== undefined ? refSig.t_start : 0);
+            const lineCode = sig.lineCode || (refSig ? refSig.lineCode : "") || "NRZ Unipolar (0/1)";
+            const ampEff = sig.bitAmp !== undefined ? Math.abs(Number(sig.bitAmp)) :
+                (refSig && refSig.bitAmp !== undefined ? Math.abs(Number(refSig.bitAmp)) : 1.0);
+            const { t, dt } = getCurrentTimeVector();
             const N_samples = sig.values.length;
 
+            let estBits = sig.numBits || (refSig ? (refSig.numBits || (refSig.rawBits ? refSig.rawBits.length : 0)) : 0);
+            if (!estBits || estBits <= 0) {
+                const tTotal = t[N_samples - 1] - tStart;
+                estBits = Math.floor(tTotal / Tb);
+                if (estBits <= 0) estBits = 8;
+                estBits = Math.min(128, estBits);
+            }
+
+            const sampleAt = (tau) => {
+                if (tau < t[0] - 0.5 * dt || tau > t[N_samples - 1] + 0.5 * dt) return null;
+                const idx = Math.max(0, Math.min(N_samples - 1, Math.round((tau - t[0]) / dt)));
+                return sig.values[idx];
+            };
+
+            const thrUni = (ampEff > 1e-6) ? (0.5 * ampEff) : umbral;
             let bits = "";
-            let tTotal = t[N_samples - 1] - tStart;
-            let estBits = Math.floor(tTotal / Tb);
-            if (estBits <= 0) estBits = 8;
-            estBits = Math.min(128, estBits);
 
             for (let b = 0; b < estBits; b++) {
-                let sampleTime = tStart + (b + 0.5) * Tb;
-                let val = 0;
-                let idx = Math.round((sampleTime - t[0]) / (t[1] - t[0]));
-                if (idx >= 0 && idx < N_samples) {
-                    val = sig.values[idx];
+                if (lineCode === "Manchester") {
+                    const v1 = sampleAt(tStart + (b + 0.25) * Tb);
+                    const v2 = sampleAt(tStart + (b + 0.75) * Tb);
+                    if (v1 === null || v2 === null) continue;
+                    bits += ((v1 - v2) >= 0) ? "1" : "0";
+                } else if (lineCode === "RZ Unipolar (0/1)") {
+                    const v = sampleAt(tStart + (b + 0.25) * Tb);
+                    if (v === null) continue;
+                    bits += (v >= thrUni) ? "1" : "0";
+                } else if (lineCode === "RZ Polar (-1/0/+1)") {
+                    const v = sampleAt(tStart + (b + 0.25) * Tb);
+                    if (v === null) continue;
+                    bits += (v >= 0) ? "1" : "0";
+                } else if (lineCode === "NRZ Polar (-1/+1)") {
+                    const v = sampleAt(tStart + (b + 0.5) * Tb);
+                    if (v === null) continue;
+                    bits += (v >= 0) ? "1" : "0";
+                } else if (lineCode === "AMI Bipolar (-1/0/+1)") {
+                    const v = sampleAt(tStart + (b + 0.5) * Tb);
+                    if (v === null) continue;
+                    bits += (Math.abs(v) >= thrUni) ? "1" : "0";
+                } else {
+                    const v = sampleAt(tStart + (b + 0.5) * Tb);
+                    if (v === null) continue;
+                    bits += (v >= thrUni) ? "1" : "0";
                 }
-                bits += (val >= umbral) ? "1" : "0";
             }
             return bits;
         }
@@ -3360,7 +3977,7 @@
         }
 
         let bitsTx = extractBitstreamFromSignal(inTx, this.properties.umbralDecision);
-        let bitsRx = extractBitstreamFromSignal(inRx, this.properties.umbralDecision);
+        let bitsRx = extractBitstreamFromSignal(inRx, this.properties.umbralDecision, inTx);
 
         if (!bitsTx || !bitsRx || bitsTx.length === 0 || bitsRx.length === 0) {
             this.setOutputData(0, this.stats ? this.stats.cumulativeBER : 0);
@@ -3368,8 +3985,11 @@
         }
 
         let bestShift = 0;
-        let minMismatch = Infinity;
+        let minErrRate = Infinity;
+        let bestCompared = -1;
         const maxShift = this.properties.autoAlinear ? Math.min(16, Math.floor(bitsTx.length / 2)) : 0;
+        const minLen = Math.min(bitsTx.length, bitsRx.length);
+        const minOverlap = Math.min(minLen, Math.max(4, Math.ceil(minLen * 0.75)));
 
         for (let s = -maxShift; s <= maxShift; s++) {
             let mismatches = 0;
@@ -3381,8 +4001,16 @@
                     compared++;
                 }
             }
-            if (compared >= 4 && mismatches < minMismatch) {
-                minMismatch = mismatches;
+            if (compared < minOverlap || compared === 0) continue;
+            const errRate = mismatches / compared;
+            const isBetter = (errRate < minErrRate - 1e-9) ||
+                (Math.abs(errRate - minErrRate) <= 1e-9 && (
+                    compared > bestCompared ||
+                    (compared === bestCompared && (Math.abs(s) < Math.abs(bestShift) || (Math.abs(s) === Math.abs(bestShift) && s > bestShift)))
+                ));
+            if (isBetter) {
+                minErrRate = errRate;
+                bestCompared = compared;
                 bestShift = s;
             }
         }
@@ -3506,6 +4134,77 @@
     LiteGraph.registerNodeType("Telecom/MedidorBER", NodoMedidorBER);
 
     // --- OSCILOSCOPIO DE DIAGRAMA DE OJO ---
+    function getEyeLineCodeConfig(sig) {
+        const lineCode = (sig && typeof sig.lineCode === "string") ? sig.lineCode : "";
+        if (lineCode === "Manchester") {
+            return {
+                lineCode: lineCode,
+                shortName: "Manchester",
+                hasMidBitTransition: true,
+                // En ventana [0, 2·Tb] iniciada en tStart + tOffset + 0.5·Tb, el bit central ocupa [0.5·Tb, 1.5·Tb]
+                // con transición obligatoria a mitad de bit (1.0·Tb). Máxima apertura en 0.75·Tb y 1.25·Tb.
+                decisionFracsTb: [0.75, 1.25],
+                decisionLabel: "0.75·Tb, 1.25·Tb",
+                nominalEyeWidthTb: 0.5,
+                crossingFracsTb: [0.5, 1.0, 1.5],
+                useDualCrossThresh: false,
+                isThreeLevel: false
+            };
+        }
+        if (lineCode === "RZ Unipolar (0/1)") {
+            return {
+                lineCode: lineCode,
+                shortName: "RZ Unipolar",
+                hasMidBitTransition: true,
+                // Pulso activo en [0.5·Tb, 1.0·Tb], retorno a cero en 1.0·Tb. Máxima apertura en 0.75·Tb.
+                decisionFracsTb: [0.75],
+                decisionLabel: "0.75·Tb",
+                nominalEyeWidthTb: 0.5,
+                crossingFracsTb: [0.5, 1.0, 1.5],
+                useDualCrossThresh: false,
+                isThreeLevel: false
+            };
+        }
+        if (lineCode === "RZ Polar (-1/0/+1)") {
+            return {
+                lineCode: lineCode,
+                shortName: "RZ Polar",
+                hasMidBitTransition: true,
+                // Pulso activo (+/-A) en [0.5·Tb, 1.0·Tb], retorno a 0 en 1.0·Tb. Máxima apertura en 0.75·Tb.
+                decisionFracsTb: [0.75],
+                decisionLabel: "0.75·Tb",
+                nominalEyeWidthTb: 0.5,
+                crossingFracsTb: [0.5, 1.0, 1.5],
+                useDualCrossThresh: true,
+                isThreeLevel: false
+            };
+        }
+        if (lineCode === "AMI Bipolar (-1/0/+1)") {
+            return {
+                lineCode: lineCode,
+                shortName: "AMI Bipolar",
+                hasMidBitTransition: false,
+                decisionFracsTb: [1.0],
+                decisionLabel: "Tb",
+                nominalEyeWidthTb: 1.0,
+                crossingFracsTb: [0.5, 1.5],
+                useDualCrossThresh: true,
+                isThreeLevel: true
+            };
+        }
+        return {
+            lineCode: lineCode,
+            shortName: lineCode ? lineCode.replace(/\s*\(.*\)$/, "") : "",
+            hasMidBitTransition: false,
+            decisionFracsTb: [1.0],
+            decisionLabel: "Tb",
+            nominalEyeWidthTb: 1.0,
+            crossingFracsTb: [0.5, 1.5],
+            useDualCrossThresh: false,
+            isThreeLevel: false
+        };
+    }
+
     function NodoOsciloscopioOjo() {
         this.addInput("d(t)", "signal");
         this.properties = {
@@ -3528,25 +4227,76 @@
         this.wTb = this.addWidget("number", "Periodo Tb (s)", 0.5, v => { that.properties.tb = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.01, step: 0.05 });
         this.addWidget("number", "Offset t0 (s)", 0.0, v => { that.properties.t_offset = Number(v); dirtyPlots = true; }, { step: 0.05 });
         this.addWidget("number", "Trazas máx", 24, v => { that.properties.num_traces = Math.max(4, Math.min(100, Math.round(Number(v)))); dirtyPlots = true; }, { min: 4, max: 100, step: 2 });
+        this.addWidget("button", "Reiniciar Media", null, () => { that.resetEyeMetrics(); });
 
+        this._oscUid = "osc_" + (++globalOscUidCounter);
         this.title = "👁️ " + this.properties.nombre;
-        this.size = [285, 335];
+        this.size = [285, 370];
         this.eyeMetrics = null;
+        this._avgMetrics = null;
         applyLightStyle(this, "#e9d5ff", "#ffffff");
     }
     NodoOsciloscopioOjo.title = "Osciloscopio Ojo";
 
+    function getUpstreamConfigSignature(startNode) {
+        const visited = new Set();
+        const parts = [];
+        function visit(node) {
+            if (!node || visited.has(node)) return;
+            visited.add(node);
+            if (node !== startNode) {
+                let propsStr = "";
+                try {
+                    propsStr = JSON.stringify(node.properties || {});
+                } catch (e) {
+                    propsStr = "";
+                }
+                parts.push(`${node.id}:${node.type}:${propsStr}`);
+            }
+            if (node.type === "Telecom/Subgrafo" && node.subgraph && Array.isArray(node.subgraph._nodes)) {
+                node.subgraph._nodes.forEach(inner => visit(inner));
+            }
+            if (Array.isArray(node.inputs) && typeof node.getInputNode === "function") {
+                for (let i = 0; i < node.inputs.length; i++) {
+                    const src = node.getInputNode(i);
+                    if (src) visit(src);
+                }
+            }
+            if (node.type === "Telecom/Inport" && node.graph && node.graph._parent_node) {
+                visit(node.graph._parent_node);
+            }
+        }
+        visit(startNode);
+        return parts.join(";");
+    }
+
+    NodoOsciloscopioOjo.prototype.resetEyeMetrics = function() {
+        this._avgMetrics = null;
+        this.eyeMetrics = null;
+        dirtyPlots = true;
+        this.setDirtyCanvas(true, true);
+    };
+
+    NodoOsciloscopioOjo.prototype.onConfigure = function() {
+        if (!Array.isArray(this.size) || this.size[1] < 370) {
+            this.size = [Math.max(285, (this.size && this.size[0]) || 285), 370];
+        }
+        this._avgMetrics = null;
+    };
+
     NodoOsciloscopioOjo.prototype.onAdded = function() {
-        activeOscilloscopes.set(this.id, this);
-        syncOscSelector(this.id);
+        if (!this._oscUid) this._oscUid = "osc_" + (++globalOscUidCounter);
+        activeOscilloscopes.set(this._oscUid, this);
+        syncOscSelector(this._oscUid);
     };
 
     NodoOsciloscopioOjo.prototype.onRemoved = function() {
-        activeOscilloscopes.delete(this.id);
+        if (this._oscUid) activeOscilloscopes.delete(this._oscUid);
         syncOscSelector();
     };
 
     NodoOsciloscopioOjo.prototype.onExecute = function() {
+        if (!this._oscUid) this._oscUid = "osc_" + (++globalOscUidCounter);
         this.lastSignal = this.getInputData(0);
         const sig = this.lastSignal;
 
@@ -3570,9 +4320,9 @@
             this._avgMetrics = null;
         }
 
-        if (!activeOscilloscopes.has(this.id)) {
-            activeOscilloscopes.set(this.id, this);
-            syncOscSelector(this.id);
+        if (!activeOscilloscopes.has(this._oscUid)) {
+            activeOscilloscopes.set(this._oscUid, this);
+            syncOscSelector(this._oscUid);
         }
     };
 
@@ -3582,93 +4332,159 @@
         const T_span = 2 * Tb;
         const tStart = sig.t_start !== undefined ? sig.t_start : 0;
         const tOffset = Number(this.properties.t_offset || 0);
-        const tBase = tStart + tOffset;
+        const tBase = tStart + tOffset + 0.5 * Tb;
+        const eyeCfg = getEyeLineCodeConfig(sig);
 
-        function evalSignal(timeVal) {
-            if (sig.sourceNode && typeof sig.sourceNode.evalAt === "function") {
-                return sig.sourceNode.evalAt(timeVal, dt);
-            }
-            if (timeVal < tMin || timeVal > tMax) return 0;
-            let idx = (timeVal - tMin) / dt;
-            let i0 = Math.floor(idx);
-            if (i0 < 0) return sig.values[0];
-            if (i0 >= N - 1) return sig.values[N - 1];
-            let frac = idx - i0;
-            return sig.values[i0] * (1 - frac) + sig.values[i0 + 1] * frac;
+        let tBurstEnd = Infinity;
+        const nBurstBits = sig.numBits || (sig.rawBits ? sig.rawBits.length : 0);
+        if (nBurstBits > 0) {
+            const bitDur = sig.Tb || (sig.Rb ? 1.0 / sig.Rb : Tb);
+            tBurstEnd = tStart + nBurstBits * bitDur;
+        } else if (sig.qamMeta && sig.qamMeta.numSymbols && sig.qamMeta.Ts) {
+            tBurstEnd = (sig.qamMeta.tStart !== undefined ? sig.qamMeta.tStart : tStart) + sig.qamMeta.numSymbols * sig.qamMeta.Ts;
         }
 
         const maxIntervals = Math.max(4, Math.round(Number(this.properties.num_traces || 24)));
-        const samplesPerTrace = Math.max(80, Math.round(Number(this.properties.samples_per_trace || 160)));
+        let samplesPerTrace = Math.max(80, Math.round(Number(this.properties.samples_per_trace || 160)));
+        if ((samplesPerTrace - 1) % 4 !== 0) {
+            samplesPerTrace = Math.round((samplesPerTrace - 1) / 4) * 4 + 1;
+        }
         const dtSub = T_span / (samplesPerTrace - 1);
 
         let eyeTracesData = [];
-        let midLevelsHigh = [];
-        let midLevelsLow = [];
-        let zeroCrossingOffsets = [];
+        let vMin = Infinity;
+        let vMax = -Infinity;
 
         for (let k = 0; k < maxIntervals; k++) {
             let startK = tBase + k * Tb;
             if (startK > tMax || startK + T_span < tMin) continue;
-
-            let traceVals = new Float32Array(samplesPerTrace);
-            let prevV = null;
-            let prevT = null;
-
-            for (let s = 0; s < samplesPerTrace; s++) {
-                let tau = s * dtSub;
-                let curT = startK + tau;
-                let v = evalSignal(curT);
-                traceVals[s] = v;
-
-                if (prevV !== null && prevV * v <= 0 && prevV !== v) {
-                    let frac = Math.abs(prevV) / (Math.abs(prevV) + Math.abs(v));
-                    let exactCrossTau = prevT + frac * dtSub;
-                    let distToTb = Math.abs(exactCrossTau - Tb);
-                    let distToEdge = Math.min(exactCrossTau, Math.abs(exactCrossTau - T_span));
-                    if (distToTb < Tb * 0.45) {
-                        zeroCrossingOffsets.push(exactCrossTau - Tb);
-                    } else if (distToEdge < Tb * 0.45) {
-                        zeroCrossingOffsets.push(exactCrossTau < Tb ? exactCrossTau : exactCrossTau - T_span);
-                    }
-                }
-                prevV = v;
-                prevT = tau;
+            if (Number.isFinite(tBurstEnd) && startK + T_span > tBurstEnd + 1e-9) {
+                if (eyeTracesData.length > 0 || startK >= tBurstEnd - 1e-9) continue;
             }
 
-            let midIndex = Math.floor(samplesPerTrace / 2);
-            let vDecision = traceVals[midIndex];
-            if (vDecision >= 0) midLevelsHigh.push(vDecision);
-            else midLevelsLow.push(vDecision);
-
+            let traceVals = new Float32Array(samplesPerTrace);
+            for (let s = 0; s < samplesPerTrace; s++) {
+                let curT = startK + s * dtSub;
+                let v = evalSignalAt(sig, curT, dt);
+                traceVals[s] = v;
+                if (v < vMin) vMin = v;
+                if (v > vMax) vMax = v;
+            }
             eyeTracesData.push(traceVals);
         }
 
-        let v1_mean = 0, v0_mean = 0;
-        let v1_min = 0, v0_max = 0;
-        let std1 = 0, std0 = 0;
+        let zeroCrossingOffsets = [];
+        const hasSignalVariation = eyeTracesData.length > 0 && Number.isFinite(vMin) && Number.isFinite(vMax) && (vMax - vMin) > 1e-6;
+        const vThresh = hasSignalVariation ? (vMax + vMin) / 2 : 0;
+        const maxAbsV = hasSignalVariation ? Math.max(Math.abs(vMin), Math.abs(vMax)) : 0;
+        const spansBipolar = hasSignalVariation && (vMin < -0.25 * maxAbsV) && (vMax > 0.25 * maxAbsV);
 
-        if (midLevelsHigh.length > 0) {
-            v1_mean = midLevelsHigh.reduce((a, b) => a + b, 0) / midLevelsHigh.length;
-            v1_min = Math.min(...midLevelsHigh);
-            let var1 = midLevelsHigh.reduce((acc, x) => acc + Math.pow(x - v1_mean, 2), 0) / midLevelsHigh.length;
-            std1 = Math.sqrt(var1);
+        const computePairStats = (hiArr, loArr) => {
+            if (hiArr.length === 0 || loArr.length === 0) {
+                return { valid: false, aperturaV: 0, alturaMedia: 0, qFactor: 0 };
+            }
+            const m1 = hiArr.reduce((a, b) => a + b, 0) / hiArr.length;
+            const m0 = loArr.reduce((a, b) => a + b, 0) / loArr.length;
+            const min1 = Math.min(...hiArr);
+            const max0 = Math.max(...loArr);
+            const s1 = Math.sqrt(hiArr.reduce((acc, x) => acc + Math.pow(x - m1, 2), 0) / hiArr.length);
+            const s0 = Math.sqrt(loArr.reduce((acc, x) => acc + Math.pow(x - m0, 2), 0) / loArr.length);
+            const ap = Math.max(0, min1 - max0);
+            const alt = Math.max(0, m1 - m0);
+            const q = alt > 1e-4 ? ((s1 + s0 > 1e-4) ? (alt / (s1 + s0)) : 99.9) : 0;
+            return { valid: true, aperturaV: ap, alturaMedia: alt, qFactor: q };
+        };
+
+        const evaluateAtDecisionIndex = (idx) => {
+            if (eyeCfg.isThreeLevel && spansBipolar) {
+                const thrHi = (vMax + vThresh) / 2;
+                const thrLo = (vMin + vThresh) / 2;
+                const grpPos = [], grpMid = [], grpNeg = [];
+                for (let tr of eyeTracesData) {
+                    const vd = tr[idx];
+                    if (vd >= thrHi) grpPos.push(vd);
+                    else if (vd <= thrLo) grpNeg.push(vd);
+                    else grpMid.push(vd);
+                }
+                const upper = computePairStats(grpPos, grpMid);
+                const lower = computePairStats(grpMid, grpNeg);
+                if (upper.valid && lower.valid) {
+                    return {
+                        valid: true,
+                        aperturaV: Math.min(upper.aperturaV, lower.aperturaV),
+                        alturaMedia: Math.min(upper.alturaMedia, lower.alturaMedia),
+                        qFactor: Math.min(upper.qFactor, lower.qFactor)
+                    };
+                }
+                if (upper.valid) return upper;
+                if (lower.valid) return lower;
+                return computePairStats(grpPos, grpNeg);
+            }
+            const hi = [], lo = [];
+            for (let tr of eyeTracesData) {
+                const vd = tr[idx];
+                if (vd >= vThresh) hi.push(vd);
+                else lo.push(vd);
+            }
+            return computePairStats(hi, lo);
+        };
+
+        let instAperturaV = 0;
+        let instAlturaMedia = 0;
+        let instQFactor = 0;
+        let bestDecisionFracTb = eyeCfg.decisionFracsTb[0];
+
+        if (hasSignalVariation) {
+            let bestEval = null;
+            for (let fracTb of eyeCfg.decisionFracsTb) {
+                const idxCand = Math.max(0, Math.min(samplesPerTrace - 1, Math.round((fracTb / 2) * (samplesPerTrace - 1))));
+                const res = evaluateAtDecisionIndex(idxCand);
+                if (!bestEval || (res.valid && (!bestEval.valid || res.aperturaV > bestEval.aperturaV + 1e-9))) {
+                    bestEval = res;
+                    bestDecisionFracTb = fracTb;
+                }
+            }
+            if (bestEval && bestEval.valid) {
+                instAperturaV = bestEval.aperturaV;
+                instAlturaMedia = bestEval.alturaMedia;
+                instQFactor = bestEval.qFactor;
+            }
+
+            const crossThresholds = (eyeCfg.useDualCrossThresh && spansBipolar)
+                ? [(vMax + vThresh) / 2, (vMin + vThresh) / 2]
+                : [vThresh];
+            const crossRefs = eyeCfg.crossingFracsTb.map(f => f * Tb);
+            const maxCrossTol = 0.45 * eyeCfg.nominalEyeWidthTb * Tb;
+
+            for (let tr of eyeTracesData) {
+                for (let cThresh of crossThresholds) {
+                    let prevV = null;
+                    let prevT = null;
+                    for (let s = 0; s < samplesPerTrace; s++) {
+                        const tau = s * dtSub;
+                        const v = tr[s];
+                        if (prevV !== null && (prevV - cThresh) * (v - cThresh) <= 0 && prevV !== v) {
+                            const dPrev = Math.abs(prevV - cThresh);
+                            const dCur = Math.abs(v - cThresh);
+                            const frac = dPrev / (dPrev + dCur);
+                            const exactCrossTau = prevT + frac * dtSub;
+                            let nearestDelta = Infinity;
+                            for (let refTau of crossRefs) {
+                                const delta = exactCrossTau - refTau;
+                                if (Math.abs(delta) < Math.abs(nearestDelta)) {
+                                    nearestDelta = delta;
+                                }
+                            }
+                            if (Math.abs(nearestDelta) < maxCrossTol) {
+                                zeroCrossingOffsets.push(nearestDelta);
+                            }
+                        }
+                        prevV = v;
+                        prevT = tau;
+                    }
+                }
+            }
         }
-        if (midLevelsLow.length > 0) {
-            v0_mean = midLevelsLow.reduce((a, b) => a + b, 0) / midLevelsLow.length;
-            v0_max = Math.max(...midLevelsLow);
-            let var0 = midLevelsLow.reduce((acc, x) => acc + Math.pow(x - v0_mean, 2), 0) / midLevelsLow.length;
-            std0 = Math.sqrt(var0);
-        }
-
-        let instAperturaV = (midLevelsHigh.length > 0 && midLevelsLow.length > 0) 
-            ? Math.max(0, v1_min - v0_max) 
-            : 0;
-
-        let instAlturaMedia = (midLevelsHigh.length > 0 && midLevelsLow.length > 0)
-            ? (v1_mean - v0_mean)
-            : 0;
-
-        let instQFactor = (std1 + std0 > 1e-4) ? (instAlturaMedia / (std1 + std0)) : 99.9;
 
         let instJitterRMS = 0;
         let instJitterPP = 0;
@@ -3681,28 +4497,75 @@
             instJitterPP = maxC - minC;
         }
 
-        let instAnchoOjo = Math.max(0, Tb - instJitterPP);
+        const nominalEyeWidth = eyeCfg.nominalEyeWidthTb * Tb;
+        let instAnchoOjo = Math.max(0, nominalEyeWidth - instJitterPP);
+        const safeAperturaV = Number.isFinite(instAperturaV) ? instAperturaV : 0;
+        const safeAlturaMedia = Number.isFinite(instAlturaMedia) ? instAlturaMedia : 0;
+        const safeAnchoOjo = Number.isFinite(instAnchoOjo) ? instAnchoOjo : 0;
+        const safeJitterRMS = Number.isFinite(instJitterRMS) ? instJitterRMS : 0;
+        const safeJitterPP = Number.isFinite(instJitterPP) ? instJitterPP : 0;
+        const safeQFactor = Number.isFinite(instQFactor) ? instQFactor : 0;
 
-        if (!this._avgMetrics || this._avgMetrics.Tb !== Tb) {
-            this._avgMetrics = {
+        if (eyeTracesData.length === 0) {
+            this._avgMetrics = null;
+            this.eyeMetrics = {
                 Tb: Tb,
-                aperturaV: instAperturaV,
-                alturaMedia: instAlturaMedia,
-                anchoOjo: instAnchoOjo,
-                jitterRMS: instJitterRMS,
-                jitterPP: instJitterPP,
-                qFactor: instQFactor,
-                samplesCount: 1
+                T_span: T_span,
+                aperturaV: 0,
+                alturaMedia: 0,
+                anchoOjo: 0,
+                jitterRMS: 0,
+                jitterPP: 0,
+                qFactor: 0,
+                framesCount: 0,
+                tracesCount: 0,
+                eyeTracesData: eyeTracesData,
+                samplesPerTrace: samplesPerTrace,
+                lineCode: eyeCfg.lineCode,
+                shortName: eyeCfg.shortName,
+                decisionFracsTb: eyeCfg.decisionFracsTb,
+                decisionLabel: eyeCfg.decisionLabel,
+                bestDecisionFracTb: bestDecisionFracTb
+            };
+            return;
+        }
+
+        const upstreamSig = getUpstreamConfigSignature(this);
+        const sigKey = `${Tb}|${tOffset}|${tMin}|${tMax}|${nBurstBits}|${sig.name || ""}|${eyeCfg.lineCode}|${maxIntervals}|${upstreamSig}`;
+
+        if (!this._avgMetrics || this._avgMetrics.sigKey !== sigKey) {
+            this._avgMetrics = {
+                sigKey: sigKey,
+                Tb: Tb,
+                framesCount: 1,
+                sumAperturaV: safeAperturaV,
+                sumAlturaMedia: safeAlturaMedia,
+                sumAnchoOjo: safeAnchoOjo,
+                sumJitterRMS: safeJitterRMS,
+                sumJitterPP: safeJitterPP,
+                sumQFactor: safeQFactor,
+                aperturaV: safeAperturaV,
+                alturaMedia: safeAlturaMedia,
+                anchoOjo: safeAnchoOjo,
+                jitterRMS: safeJitterRMS,
+                jitterPP: safeJitterPP,
+                qFactor: safeQFactor
             };
         } else {
-            const alpha = 0.12;
-            this._avgMetrics.aperturaV = (1 - alpha) * this._avgMetrics.aperturaV + alpha * instAperturaV;
-            this._avgMetrics.alturaMedia = (1 - alpha) * this._avgMetrics.alturaMedia + alpha * instAlturaMedia;
-            this._avgMetrics.anchoOjo = (1 - alpha) * this._avgMetrics.anchoOjo + alpha * instAnchoOjo;
-            this._avgMetrics.jitterRMS = (1 - alpha) * this._avgMetrics.jitterRMS + alpha * instJitterRMS;
-            this._avgMetrics.jitterPP = (1 - alpha) * this._avgMetrics.jitterPP + alpha * instJitterPP;
-            this._avgMetrics.qFactor = (1 - alpha) * this._avgMetrics.qFactor + alpha * instQFactor;
-            this._avgMetrics.samplesCount++;
+            const avg = this._avgMetrics;
+            avg.framesCount += 1;
+            avg.sumAperturaV += safeAperturaV;
+            avg.sumAlturaMedia += safeAlturaMedia;
+            avg.sumAnchoOjo += safeAnchoOjo;
+            avg.sumJitterRMS += safeJitterRMS;
+            avg.sumJitterPP += safeJitterPP;
+            avg.sumQFactor += safeQFactor;
+            avg.aperturaV = avg.sumAperturaV / avg.framesCount;
+            avg.alturaMedia = avg.sumAlturaMedia / avg.framesCount;
+            avg.anchoOjo = avg.sumAnchoOjo / avg.framesCount;
+            avg.jitterRMS = avg.sumJitterRMS / avg.framesCount;
+            avg.jitterPP = avg.sumJitterPP / avg.framesCount;
+            avg.qFactor = avg.sumQFactor / avg.framesCount;
         }
 
         this.eyeMetrics = {
@@ -3714,16 +4577,23 @@
             jitterRMS: this._avgMetrics.jitterRMS,
             jitterPP: this._avgMetrics.jitterPP,
             qFactor: this._avgMetrics.qFactor,
+            framesCount: this._avgMetrics.framesCount,
             tracesCount: eyeTracesData.length,
             eyeTracesData: eyeTracesData,
-            samplesPerTrace: samplesPerTrace
+            samplesPerTrace: samplesPerTrace,
+            lineCode: eyeCfg.lineCode,
+            shortName: eyeCfg.shortName,
+            decisionFracsTb: eyeCfg.decisionFracsTb,
+            decisionLabel: eyeCfg.decisionLabel,
+            bestDecisionFracTb: bestDecisionFracTb
         };
     };
 
     NodoOsciloscopioOjo.prototype.onDrawForeground = function(ctx) {
         if (this.flags.collapsed) return;
+        if (this.size[1] < 370) this.size[1] = 370;
         const w = this.size[0];
-        const startY = 160;
+        const startY = 184;
         const miniPlotH = 80;
         const miniPlotW = w - 24;
         const plotX = 12;
@@ -3770,10 +4640,24 @@
                 }
                 ctx.stroke();
             }
+
+            const decFracs = (m.decisionFracsTb && m.decisionFracsTb.length > 0) ? m.decisionFracsTb : [1.0];
+            ctx.save();
+            ctx.strokeStyle = "rgba(239, 68, 68, 0.85)";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            for (let fracTb of decFracs) {
+                let dx = plotX + (fracTb / 2) * miniPlotW;
+                ctx.beginPath();
+                ctx.moveTo(dx, startY + 2);
+                ctx.lineTo(dx, startY + miniPlotH - 2);
+                ctx.stroke();
+            }
+            ctx.restore();
         }
 
         const statsY = startY + miniPlotH + 8;
-        const statsH = 75;
+        const statsH = 88;
         ctx.fillStyle = "#0f172a";
         ctx.strokeStyle = "#334155";
         ctx.beginPath();
@@ -3784,27 +4668,43 @@
         ctx.font = "9.5px 'Segoe UI', monospace";
         if (!m || m.tracesCount === 0) {
             ctx.fillStyle = "#94a3b8";
-            ctx.fillText("Conecta una señal digital", plotX + 10, statsY + 28);
-            ctx.fillText("para construir el diagrama de ojo.", plotX + 10, statsY + 44);
+            ctx.fillText("Conecta una señal digital", plotX + 10, statsY + 36);
+            ctx.fillText("para construir el diagrama de ojo.", plotX + 10, statsY + 52);
         } else {
+            const nFrames = m.framesCount || 1;
+            ctx.font = "bold 9px 'Segoe UI', monospace";
+            ctx.fillStyle = "#38bdf8";
+            ctx.fillText(`MEDIA ACUMULADA (${nFrames} ${nFrames === 1 ? "trama" : "tramas"})`, plotX + 8, statsY + 13);
+
+            ctx.strokeStyle = "#1e293b";
+            ctx.beginPath();
+            ctx.moveTo(plotX, statsY + 18);
+            ctx.lineTo(plotX + miniPlotW, statsY + 18);
+            ctx.stroke();
+
+            ctx.font = "9.5px 'Segoe UI', monospace";
             ctx.fillStyle = m.aperturaV > 0.15 ? "#4ade80" : "#f87171";
-            ctx.fillText(`Apertura V: ${m.aperturaV.toFixed(2)} V`, plotX + 8, statsY + 18);
+            ctx.fillText(`Apertura V: ${m.aperturaV.toFixed(2)} V`, plotX + 8, statsY + 32);
 
             ctx.fillStyle = "#38bdf8";
-            ctx.fillText(`Ancho Ojo : ${m.anchoOjo.toFixed(3)} s`, plotX + 8, statsY + 36);
+            ctx.fillText(`Ancho Ojo : ${m.anchoOjo.toFixed(3)} s`, plotX + 8, statsY + 47);
 
             ctx.fillStyle = "#facc15";
             let qStr = m.qFactor > 50 ? ">50" : m.qFactor.toFixed(1);
-            ctx.fillText(`Factor Q  : ${qStr}`, plotX + 8, statsY + 54);
+            ctx.fillText(`Factor Q  : ${qStr}`, plotX + 8, statsY + 62);
 
             ctx.fillStyle = "#cbd5e1";
-            ctx.fillText(`Tb : ${m.Tb.toFixed(3)} s`, plotX + 145, statsY + 18);
+            ctx.fillText(`Tb : ${m.Tb.toFixed(3)} s`, plotX + 145, statsY + 32);
 
             ctx.fillStyle = "#fb923c";
-            ctx.fillText(`Jitter P-P: ${(m.jitterPP * 1000).toFixed(1)} ms`, plotX + 145, statsY + 36);
+            ctx.fillText(`Jitter P-P: ${(m.jitterPP * 1000).toFixed(1)} ms`, plotX + 145, statsY + 47);
 
             ctx.fillStyle = "#94a3b8";
-            ctx.fillText(`Jitter RMS: ${(m.jitterRMS * 1000).toFixed(1)} ms`, plotX + 145, statsY + 54);
+            ctx.fillText(`Jitter RMS: ${(m.jitterRMS * 1000).toFixed(1)} ms`, plotX + 145, statsY + 62);
+
+            ctx.fillStyle = "#fca5a5";
+            const codeSuffix = m.shortName ? ` (${m.shortName})` : "";
+            ctx.fillText(`t_dec: ${m.decisionLabel || "Tb"}${codeSuffix}`, plotX + 8, statsY + 78);
         }
 
         ctx.restore();
@@ -3826,9 +4726,7 @@
     }
     NodoInport.title = "Puerto Entrada (In)";
     NodoInport.prototype.onExecute = function() {
-        if (this._receivedData) {
-            this.setOutputData(0, this._receivedData);
-        }
+        this.setOutputData(0, this._receivedData || null);
     };
     LiteGraph.registerNodeType("Telecom/Inport", NodoInport);
 
@@ -3843,16 +4741,77 @@
     }
     NodoOutport.title = "Puerto Salida (Out)";
     NodoOutport.prototype.onExecute = function() {
-        this._exportedData = this.getInputData(0);
+        this._exportedData = this.getInputData(0) || null;
     };
     LiteGraph.registerNodeType("Telecom/Outport", NodoOutport);
 
+    function sha256Fallback(message) {
+        const bytes = new TextEncoder().encode(message);
+        const K = new Uint32Array([
+            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+            0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+            0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+            0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+            0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+            0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+        ]);
+        const H = new Uint32Array([
+            0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+            0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+        ]);
+        const bitLen = bytes.length * 8;
+        const paddedLen = Math.ceil((bytes.length + 9) / 64) * 64;
+        const padded = new Uint8Array(paddedLen);
+        padded.set(bytes);
+        padded[bytes.length] = 0x80;
+        const view = new DataView(padded.buffer);
+        view.setUint32(paddedLen - 8, Math.floor(bitLen / 0x100000000), false);
+        view.setUint32(paddedLen - 4, bitLen >>> 0, false);
+
+        const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+        const W = new Uint32Array(64);
+
+        for (let offset = 0; offset < paddedLen; offset += 64) {
+            for (let i = 0; i < 16; i++) W[i] = view.getUint32(offset + i * 4, false);
+            for (let i = 16; i < 64; i++) {
+                const s0 = rotr(W[i - 15], 7) ^ rotr(W[i - 15], 18) ^ (W[i - 15] >>> 3);
+                const s1 = rotr(W[i - 2], 17) ^ rotr(W[i - 2], 19) ^ (W[i - 2] >>> 10);
+                W[i] = (W[i - 16] + s0 + W[i - 7] + s1) >>> 0;
+            }
+            let [a, b, c, d, e, f, g, h] = H;
+            for (let i = 0; i < 64; i++) {
+                const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+                const ch = (e & f) ^ (~e & g);
+                const temp1 = (h + S1 + ch + K[i] + W[i]) >>> 0;
+                const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+                const maj = (a & b) ^ (a & c) ^ (b & c);
+                const temp2 = (S0 + maj) >>> 0;
+                h = g; g = f; f = e; e = (d + temp1) >>> 0;
+                d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;
+            }
+            H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0;
+            H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+            H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0;
+            H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+        }
+        return Array.from(H).map(x => x.toString(16).padStart(8, "0")).join("");
+    }
+
     async function sha256(message) {
         if (!message) return "";
-        const msgBuffer = new TextEncoder().encode(message);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        if (window.crypto && window.crypto.subtle && typeof window.crypto.subtle.digest === "function") {
+            try {
+                const msgBuffer = new TextEncoder().encode(message);
+                const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            } catch (e) {
+                return sha256Fallback(message);
+            }
+        }
+        return sha256Fallback(message);
     }
 
     function NodoSubgrafo() {
@@ -3932,7 +4891,11 @@
                 return;
             }
         }
-        enterSubgraph(this);
+        window._suppressCanvasPointerUntil = performance.now() + 250;
+        const targetNode = this;
+        setTimeout(() => {
+            enterSubgraph(targetNode);
+        }, 0);
     };
 
     NodoSubgrafo.prototype.onSerialize = function(o) {
@@ -3942,14 +4905,27 @@
     };
 
     NodoSubgrafo.prototype.onConfigure = function(o) {
-        if (o.subgraph) {
-            this.subgraph.clear();
-            this.subgraph.configure(o.subgraph);
+        if (this.subgraph) {
             this.subgraph._parent_node = this;
-            this.subgraph.start();
             this.syncPortsFromInner();
         }
         this.updateLockTitle();
+    };
+
+    NodoSubgrafo.prototype.onRemoved = function() {
+        if (this.subgraph) {
+            const innerOsc = this.subgraph.findNodesByType("Telecom/Osciloscopio")
+                .concat(this.subgraph.findNodesByType("Telecom/OsciloscopioOjo"));
+            innerOsc.forEach(osc => {
+                if (osc._oscUid) activeOscilloscopes.delete(osc._oscUid);
+            });
+            const innerSub = this.subgraph.findNodesByType("Telecom/Subgrafo");
+            innerSub.forEach(sg => {
+                if (typeof sg.onRemoved === "function") sg.onRemoved();
+            });
+            this.subgraph.clear();
+        }
+        syncOscSelector();
     };
 
     NodoSubgrafo.prototype.syncPortsFromInner = function() {
@@ -4004,12 +4980,10 @@
 
 
     // --- OSCILOSCOPIO ---
-    let oscCounter = 1;
-    const activeOscilloscopes = new Map();
-
     function NodoOsciloscopio() {
         this.addInput("Señal", "signal");
         this.properties = { nombre: "Osciloscopio " + (oscCounter++) };
+        this._oscUid = "osc_" + (++globalOscUidCounter);
         const that = this;
         this.addWidget("text", "ID", this.properties.nombre, v => {
             that.properties.nombre = v;
@@ -4023,30 +4997,33 @@
     }
     NodoOsciloscopio.title = "Osciloscopio";
     NodoOsciloscopio.prototype.onAdded = function() {
-        activeOscilloscopes.set(this.id, this);
-        syncOscSelector(this.id);
+        if (!this._oscUid) this._oscUid = "osc_" + (++globalOscUidCounter);
+        activeOscilloscopes.set(this._oscUid, this);
+        syncOscSelector(this._oscUid);
     };
     NodoOsciloscopio.prototype.onRemoved = function() {
-        activeOscilloscopes.delete(this.id);
+        if (this._oscUid) activeOscilloscopes.delete(this._oscUid);
         syncOscSelector();
     };
     NodoOsciloscopio.prototype.onExecute = function() {
+        if (!this._oscUid) this._oscUid = "osc_" + (++globalOscUidCounter);
         this.lastSignal = this.getInputData(0);
-        if (!activeOscilloscopes.has(this.id)) {
-            activeOscilloscopes.set(this.id, this);
-            syncOscSelector(this.id);
+        if (!activeOscilloscopes.has(this._oscUid)) {
+            activeOscilloscopes.set(this._oscUid, this);
+            syncOscSelector(this._oscUid);
         }
     };
     LiteGraph.registerNodeType("Telecom/Osciloscopio", NodoOsciloscopio);
 
     function syncOscSelector(preferId = null) {
         const sel = document.getElementById("oscSelect");
+        if (!sel) return;
         const prevVal = preferId !== null ? String(preferId) : sel.value;
         sel.innerHTML = "";
         
-        activeOscilloscopes.forEach((node, id) => {
+        activeOscilloscopes.forEach((node, uid) => {
             let opt = document.createElement("option");
-            opt.value = String(id);
+            opt.value = String(uid);
             opt.textContent = node.properties.nombre;
             sel.appendChild(opt);
         });
@@ -4055,6 +5032,10 @@
             sel.value = prevVal;
         } else if (sel.options.length > 0) {
             sel.selectedIndex = 0;
+        }
+        if (sel.value !== lastSelectedOscUid) {
+            savedTimeRanges = { x: null, y: null };
+            lastSelectedOscUid = sel.value;
         }
         forcePlotUpdate();
     }
@@ -4065,9 +5046,96 @@
     // ==========================================
     let savedTimeRanges = { x: null, y: null };
     let savedFreqRanges = { x: null, y: null };
-    let plotsEventsBound = false;
+    let plotTimeEventsBound = false;
+    let plotFreqEventsBound = false;
+
+    function formatAxisBound(val) {
+        if (!Number.isFinite(val)) return "";
+        return String(Number(val.toFixed(3)));
+    }
+
+    function getManualYRange(minId, maxId, autoId) {
+        const autoEl = document.getElementById(autoId);
+        if (!autoEl || autoEl.checked) return null;
+        const minEl = document.getElementById(minId);
+        const maxEl = document.getElementById(maxId);
+        const vMin = minEl ? parseFloat(minEl.value) : NaN;
+        const vMax = maxEl ? parseFloat(maxEl.value) : NaN;
+        if (!Number.isFinite(vMin) || !Number.isFinite(vMax) || vMin >= vMax) return null;
+        return [vMin, vMax];
+    }
+
+    function syncYScaleInputStyles() {
+        const pairs = [
+            ["yTimeAuto", "yTimeMin", "yTimeMax"],
+            ["yFreqAuto", "yFreqMin", "yFreqMax"]
+        ];
+        pairs.forEach(([autoId, minId, maxId]) => {
+            const autoEl = document.getElementById(autoId);
+            const isAuto = !autoEl || autoEl.checked;
+            [minId, maxId].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle("y-auto-dim", isAuto);
+            });
+        });
+    }
+
+    function onTimeYScaleInput() {
+        const autoEl = document.getElementById("yTimeAuto");
+        if (autoEl && autoEl.checked) autoEl.checked = false;
+        syncYScaleInputStyles();
+        savedTimeRanges.y = null;
+        dirtyPlots = true;
+    }
+
+    function onTimeYAutoToggled() {
+        const autoEl = document.getElementById("yTimeAuto");
+        if (autoEl && !autoEl.checked) {
+            const pt = document.getElementById("plot-time");
+            const r = pt && pt._fullLayout && pt._fullLayout.yaxis && pt._fullLayout.yaxis.range;
+            if (Array.isArray(r) && Number.isFinite(r[0]) && Number.isFinite(r[1]) && r[0] < r[1]) {
+                const minEl = document.getElementById("yTimeMin");
+                const maxEl = document.getElementById("yTimeMax");
+                if (minEl) minEl.value = formatAxisBound(r[0]);
+                if (maxEl) maxEl.value = formatAxisBound(r[1]);
+            }
+        }
+        syncYScaleInputStyles();
+        savedTimeRanges.y = null;
+        dirtyPlots = true;
+    }
+
+    function onFreqYScaleInput() {
+        const autoEl = document.getElementById("yFreqAuto");
+        if (autoEl && autoEl.checked) autoEl.checked = false;
+        syncYScaleInputStyles();
+        savedFreqRanges.y = null;
+        dirtyPlots = true;
+    }
+
+    function onFreqYAutoToggled() {
+        const autoEl = document.getElementById("yFreqAuto");
+        if (autoEl && !autoEl.checked) {
+            const pf = document.getElementById("plot-freq");
+            const r = pf && pf._fullLayout && pf._fullLayout.yaxis && pf._fullLayout.yaxis.range;
+            if (Array.isArray(r) && Number.isFinite(r[0]) && Number.isFinite(r[1]) && r[0] < r[1]) {
+                const minEl = document.getElementById("yFreqMin");
+                const maxEl = document.getElementById("yFreqMax");
+                if (minEl) minEl.value = formatAxisBound(r[0]);
+                if (maxEl) maxEl.value = formatAxisBound(r[1]);
+            }
+        }
+        syncYScaleInputStyles();
+        savedFreqRanges.y = null;
+        dirtyPlots = true;
+    }
 
     function forcePlotUpdate() {
+        const sel = document.getElementById("oscSelect");
+        if (sel && sel.value !== lastSelectedOscUid) {
+            savedTimeRanges = { x: null, y: null };
+            lastSelectedOscUid = sel.value;
+        }
         savedFreqRanges = { x: null, y: null };
         dirtyPlots = true;
     }
@@ -4075,7 +5143,10 @@
     function onTimeRangeChanged() {
         savedTimeRanges = { x: null, y: null };
         dirtyPlots = true;
-        currentGraph.runStep(1);
+        mainGraph.runStep(1);
+        if (currentGraph && currentGraph !== mainGraph && !isGraphReachableFromMain(currentGraph)) {
+            currentGraph.runStep(1);
+        }
     }
 
     function toggleFreqPlot() {
@@ -4083,62 +5154,103 @@
         const btn = document.getElementById("btnToggleFreq");
         const plotFreqDiv = document.getElementById("plot-freq");
         const plotPanel = document.getElementById("plot-panel");
+        const ctrlFreqY = document.getElementById("ctrlFreqY");
 
         if (showFreqSpectrum) {
             btn.innerText = "Ocultar |X(f)|";
             plotFreqDiv.classList.remove("hidden");
             plotPanel.classList.remove("single-plot");
+            if (ctrlFreqY) ctrlFreqY.style.display = "flex";
         } else {
             btn.innerText = "Mostrar |X(f)|";
             plotFreqDiv.classList.add("hidden");
             plotPanel.classList.add("single-plot");
+            if (ctrlFreqY) ctrlFreqY.style.display = "none";
         }
         Plotly.Plots.resize('plot-time');
         dirtyPlots = true;
     }
 
     function bindPlotZoomListeners() {
-        if (plotsEventsBound) return;
         const pt = document.getElementById("plot-time");
         const pf = document.getElementById("plot-freq");
 
-        if (pt && typeof pt.on === "function") {
+        if (!plotTimeEventsBound && pt && typeof pt.on === "function") {
             pt.on("plotly_relayout", (ed) => {
-                if (ed["xaxis.autorange"] || ed["yaxis.autorange"]) {
-                    savedTimeRanges = { x: null, y: null };
-                } else {
-                    if (ed["xaxis.range[0]"] !== undefined && ed["xaxis.range[1]"] !== undefined) {
-                        savedTimeRanges.x = [ed["xaxis.range[0]"], ed["xaxis.range[1]"]];
-                    } else if (Array.isArray(ed["xaxis.range"])) {
-                        savedTimeRanges.x = [...ed["xaxis.range"]];
+                if (ed["xaxis.autorange"]) {
+                    savedTimeRanges.x = null;
+                } else if (ed["xaxis.range[0]"] !== undefined && ed["xaxis.range[1]"] !== undefined) {
+                    savedTimeRanges.x = [ed["xaxis.range[0]"], ed["xaxis.range[1]"]];
+                } else if (Array.isArray(ed["xaxis.range"])) {
+                    savedTimeRanges.x = [...ed["xaxis.range"]];
+                }
+
+                if (ed["yaxis.autorange"]) {
+                    savedTimeRanges.y = null;
+                    const cb = document.getElementById("yTimeAuto");
+                    if (cb && !cb.checked) {
+                        cb.checked = true;
+                        syncYScaleInputStyles();
                     }
+                } else {
+                    let yRange = null;
                     if (ed["yaxis.range[0]"] !== undefined && ed["yaxis.range[1]"] !== undefined) {
-                        savedTimeRanges.y = [ed["yaxis.range[0]"], ed["yaxis.range[1]"]];
+                        yRange = [ed["yaxis.range[0]"], ed["yaxis.range[1]"]];
                     } else if (Array.isArray(ed["yaxis.range"])) {
-                        savedTimeRanges.y = [...ed["yaxis.range"]];
+                        yRange = [...ed["yaxis.range"]];
+                    }
+                    if (yRange) {
+                        savedTimeRanges.y = yRange;
+                        const cb = document.getElementById("yTimeAuto");
+                        if (cb && !cb.checked) {
+                            const minEl = document.getElementById("yTimeMin");
+                            const maxEl = document.getElementById("yTimeMax");
+                            if (minEl) minEl.value = formatAxisBound(yRange[0]);
+                            if (maxEl) maxEl.value = formatAxisBound(yRange[1]);
+                        }
                     }
                 }
             });
-            plotsEventsBound = true;
+            plotTimeEventsBound = true;
         }
 
-        if (pf && typeof pf.on === "function") {
+        if (!plotFreqEventsBound && pf && typeof pf.on === "function") {
             pf.on("plotly_relayout", (ed) => {
-                if (ed["xaxis.autorange"] || ed["yaxis.autorange"]) {
-                    savedFreqRanges = { x: null, y: null };
-                } else {
-                    if (ed["xaxis.range[0]"] !== undefined && ed["xaxis.range[1]"] !== undefined) {
-                        savedFreqRanges.x = [ed["xaxis.range[0]"], ed["xaxis.range[1]"]];
-                    } else if (Array.isArray(ed["xaxis.range"])) {
-                        savedFreqRanges.x = [...ed["xaxis.range"]];
+                if (ed["xaxis.autorange"]) {
+                    savedFreqRanges.x = null;
+                } else if (ed["xaxis.range[0]"] !== undefined && ed["xaxis.range[1]"] !== undefined) {
+                    savedFreqRanges.x = [ed["xaxis.range[0]"], ed["xaxis.range[1]"]];
+                } else if (Array.isArray(ed["xaxis.range"])) {
+                    savedFreqRanges.x = [...ed["xaxis.range"]];
+                }
+
+                if (ed["yaxis.autorange"]) {
+                    savedFreqRanges.y = null;
+                    const cb = document.getElementById("yFreqAuto");
+                    if (cb && !cb.checked) {
+                        cb.checked = true;
+                        syncYScaleInputStyles();
                     }
+                } else {
+                    let yRange = null;
                     if (ed["yaxis.range[0]"] !== undefined && ed["yaxis.range[1]"] !== undefined) {
-                        savedFreqRanges.y = [ed["yaxis.range[0]"], ed["yaxis.range[1]"]];
+                        yRange = [ed["yaxis.range[0]"], ed["yaxis.range[1]"]];
                     } else if (Array.isArray(ed["yaxis.range"])) {
-                        savedFreqRanges.y = [...ed["yaxis.range"]];
+                        yRange = [...ed["yaxis.range"]];
+                    }
+                    if (yRange) {
+                        savedFreqRanges.y = yRange;
+                        const cb = document.getElementById("yFreqAuto");
+                        if (cb && !cb.checked) {
+                            const minEl = document.getElementById("yFreqMin");
+                            const maxEl = document.getElementById("yFreqMax");
+                            if (minEl) minEl.value = formatAxisBound(yRange[0]);
+                            if (maxEl) maxEl.value = formatAxisBound(yRange[1]);
+                        }
                     }
                 }
             });
+            plotFreqEventsBound = true;
         }
     }
 
@@ -4150,7 +5262,7 @@
         if (panel.classList.contains("hidden")) return;
 
         const sel = document.getElementById("oscSelect");
-        const selId = (sel && sel.value !== "") ? Number(sel.value) : -1;
+        const selId = sel ? sel.value : "";
         const oscNode = activeOscilloscopes.get(selId);
         const in1 = (oscNode && oscNode.getInputData(0)) ? oscNode.getInputData(0) : (oscNode ? oscNode.lastSignal : null);
 
@@ -4163,6 +5275,8 @@
         const y = (in1 && in1.values) ? in1.values : new Array(N).fill(0);
         const isDisc = in1 ? in1.discrete : false;
         const isEyeScope = oscNode && oscNode.type === "Telecom/OsciloscopioOjo";
+        const manualTimeY = getManualYRange("yTimeMin", "yTimeMax", "yTimeAuto");
+        const manualFreqY = getManualYRange("yFreqMin", "yFreqMax", "yFreqAuto");
 
         let timeTraces = [];
         let xLabel = isDisc ? "n (índice entero)" : "Tiempo t (s)";
@@ -4172,22 +5286,23 @@
             const T_eye = 2 * Tb;
             const tStart = in1.t_start !== undefined ? in1.t_start : 0;
             const tOffset = Number(oscNode.properties.t_offset || 0);
-            const tBase = tStart + tOffset;
+            const tBase = tStart + tOffset + 0.5 * Tb;
+            const eyeCfg = getEyeLineCodeConfig(in1);
             const numTraces = Math.max(8, Math.round(Number(oscNode.properties.num_traces || 24)));
-            const samplesPerTrace = 160;
+            const samplesPerTrace = 161;
             const dtTrace = T_eye / (samplesPerTrace - 1);
 
             function evalEyeSignal(timeVal) {
-                if (in1.sourceNode && typeof in1.sourceNode.evalAt === "function") {
-                    return in1.sourceNode.evalAt(timeVal, dt);
-                }
-                if (timeVal < tMin || timeVal > tMax) return 0;
-                let idx = (timeVal - tMin) / dt;
-                let i0 = Math.floor(idx);
-                if (i0 < 0) return in1.values[0];
-                if (i0 >= N - 1) return in1.values[N - 1];
-                let frac = idx - i0;
-                return in1.values[i0] * (1 - frac) + in1.values[i0 + 1] * frac;
+                return evalSignalAt(in1, timeVal, dt);
+            }
+
+            let tBurstEnd = Infinity;
+            const nBurstBits = in1.numBits || (in1.rawBits ? in1.rawBits.length : 0);
+            if (nBurstBits > 0) {
+                const bitDur = in1.Tb || (in1.Rb ? 1.0 / in1.Rb : Tb);
+                tBurstEnd = tStart + nBurstBits * bitDur;
+            } else if (in1.qamMeta && in1.qamMeta.numSymbols && in1.qamMeta.Ts) {
+                tBurstEnd = (in1.qamMeta.tStart !== undefined ? in1.qamMeta.tStart : tStart) + in1.qamMeta.numSymbols * in1.qamMeta.Ts;
             }
 
             let eyeTimeAxis = [];
@@ -4196,6 +5311,9 @@
             for (let k = 0; k < numTraces; k++) {
                 let startK = tBase + k * Tb;
                 if (startK > tMax || startK + T_eye < tMin) continue;
+                if (Number.isFinite(tBurstEnd) && startK + T_eye > tBurstEnd + 1e-9) {
+                    if (timeTraces.length > 0 || startK >= tBurstEnd - 1e-9) continue;
+                }
 
                 let yTrace = [];
                 for (let s = 0; s < samplesPerTrace; s++) {
@@ -4222,17 +5340,42 @@
                     yMaxEye = Math.max(...allY);
                 }
             }
+            const yPadEye = Math.max(0.1, (yMaxEye - yMinEye) * 0.1);
+            let yDecLow = yMinEye - yPadEye;
+            let yDecHigh = yMaxEye + yPadEye;
+            if (manualTimeY) {
+                yDecLow = Math.min(yDecLow, manualTimeY[0]);
+                yDecHigh = Math.max(yDecHigh, manualTimeY[1]);
+            }
+            const decX = [];
+            const decY = [];
+            eyeCfg.decisionFracsTb.forEach((fracTb, idx) => {
+                if (idx > 0) {
+                    decX.push(null);
+                    decY.push(null);
+                }
+                const tDec = fracTb * Tb;
+                decX.push(tDec, tDec);
+                decY.push(yDecLow, yDecHigh);
+            });
             timeTraces.push({
-                x: [Tb, Tb],
-                y: [yMinEye * 1.1, yMaxEye * 1.1],
+                x: decX,
+                y: decY,
                 type: 'scatter',
                 mode: 'lines',
                 line: { color: '#ef4444', width: 1.5, dash: 'dot' },
-                name: 'Instante decisión (Tb)'
+                name: `Instante decisión (${eyeCfg.decisionLabel})`
             });
 
-            let metricInfo = oscNode.eyeMetrics ? ` | Apertura=${oscNode.eyeMetrics.aperturaV.toFixed(2)}V, Jitter=${(oscNode.eyeMetrics.jitterPP * 1000).toFixed(1)}ms` : "";
-            xLabel = `Tiempo en ventana 2·Tb (s) [Tb = ${Tb.toFixed(3)}s]${metricInfo}`;
+            let metricInfo = "";
+            if (oscNode.eyeMetrics && oscNode.eyeMetrics.tracesCount > 0) {
+                const em = oscNode.eyeMetrics;
+                const nTramas = em.framesCount || 1;
+                const qLabel = em.qFactor > 50 ? ">50" : em.qFactor.toFixed(1);
+                metricInfo = `<br>Media (${nTramas} ${nTramas === 1 ? "trama" : "tramas"}): Apertura=${em.aperturaV.toFixed(2)}V, Ancho=${em.anchoOjo.toFixed(3)}s, Jitter=${(em.jitterPP * 1000).toFixed(1)}ms, Q=${qLabel}`;
+            }
+            const codeInfo = eyeCfg.shortName ? ` · ${eyeCfg.shortName}` : "";
+            xLabel = `Ventana 2·Tb (s) [Tb=${Tb.toFixed(3)}s${codeInfo}]${metricInfo}`;
         } else if (isDisc && in1 && in1.stemX) {
             let stemX_lines = [];
             let stemY_lines = [];
@@ -4268,7 +5411,7 @@
             });
         }
 
-        const defaultTimeRange = isEyeScope ? [0, 2 * Math.max(0.01, Number(oscNode.properties.tb || 0.5))] : [tMin, tMax];
+        const defaultTimeRange = isEyeScope ? [0, 2 * Math.max(0.005, Number(oscNode.properties.tb || 0.5))] : [tMin, tMax];
         const timeXAxis = {
             title: xLabel,
             range: savedTimeRanges.x ? savedTimeRanges.x : defaultTimeRange,
@@ -4280,8 +5423,14 @@
             gridcolor: '#e2e8f0',
             zerolinecolor: '#94a3b8'
         };
-        if (savedTimeRanges.y) {
+        if (manualTimeY) {
+            timeYAxis.range = manualTimeY;
+            timeYAxis.autorange = false;
+        } else if (savedTimeRanges.y) {
             timeYAxis.range = savedTimeRanges.y;
+            timeYAxis.autorange = false;
+        } else {
+            timeYAxis.autorange = true;
         }
 
         const plotConfig = {
@@ -4297,14 +5446,14 @@
             : `<b>Dominio del Tiempo — ${oscName}</b> [${sigName}]`;
 
         Plotly.react('plot-time', timeTraces, {
-            title: { text: chartTitle, font: { size: 12, color: '#1e293b' } },
+            title: { text: chartTitle, font: { size: 11.5, color: '#1e293b' }, x: 0.01, xanchor: 'left', y: 0.99, yanchor: 'top', pad: { t: 22 } },
             dragmode: 'zoom',
             xaxis: timeXAxis,
             yaxis: timeYAxis,
-            margin: { t: 34, b: 36, l: 48, r: 16 },
+            margin: { t: 58, b: isEyeScope ? 54 : 40, l: 50, r: 16 },
             paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
             showlegend: true,
-            legend: { x: 0.7, y: 0.98, bgcolor: 'rgba(255,255,255,0.7)' }
+            legend: { x: 0.98, xanchor: 'right', y: 0.98, bgcolor: 'rgba(255,255,255,0.75)' }
         }, plotConfig);
 
         if (showFreqSpectrum) {
@@ -4348,21 +5497,26 @@
                 gridcolor: '#e2e8f0',
                 zerolinecolor: '#94a3b8'
             };
-            if (savedFreqRanges.y) {
+            if (manualFreqY) {
+                freqYAxis.range = manualFreqY;
+                freqYAxis.autorange = false;
+            } else if (savedFreqRanges.y) {
                 freqYAxis.range = savedFreqRanges.y;
+                freqYAxis.autorange = false;
             } else {
+                freqYAxis.autorange = true;
                 freqYAxis.rangemode = 'tozero';
             }
 
             Plotly.react('plot-freq', freqTraces, {
-                title: { text: `<b>Espectro de Frecuencia — ${oscName}</b> (Resolución adaptativa)`, font: { size: 12, color: '#1e293b' } },
+                title: { text: `<b>Espectro de Frecuencia — ${oscName}</b> (Resolución adaptativa)`, font: { size: 11.5, color: '#1e293b' }, x: 0.01, xanchor: 'left', y: 0.99, yanchor: 'top', pad: { t: 22 } },
                 dragmode: 'zoom',
                 xaxis: freqXAxis,
                 yaxis: freqYAxis,
-                margin: { t: 34, b: 36, l: 48, r: 16 },
+                margin: { t: 58, b: 40, l: 50, r: 16 },
                 paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
                 showlegend: true,
-                legend: { x: 0.7, y: 0.98, bgcolor: 'rgba(255,255,255,0.7)' }
+                legend: { x: 0.98, xanchor: 'right', y: 0.98, bgcolor: 'rgba(255,255,255,0.75)' }
             }, plotConfig);
         }
 
@@ -4396,6 +5550,15 @@
             customDragRect = null;
         }
     }
+
+    ["mouseup", "click", "dblclick", "contextmenu"].forEach(evtType => {
+        canvasElement.addEventListener(evtType, function(e) {
+            if (window._suppressCanvasPointerUntil && performance.now() < window._suppressCanvasPointerUntil) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+            }
+        }, true);
+    });
 
     canvasElement.addEventListener("mousedown", function(e) {
         if (e.button !== 0) return;
@@ -4543,19 +5706,18 @@
         const idMap = new Map();
         selectedNodes.forEach(oldNode => {
             const data = oldNode.serialize();
+            const cleanData = stripSerializedNodeLinks(data);
             const newNode = LiteGraph.createNode(oldNode.type);
-            newNode.configure(data);
+            newNode.configure(cleanData);
             newNode.pos = [
                 oldNode.pos[0] - minX + 240,
                 oldNode.pos[1] - minY + 80
             ];
             subNode.subgraph.add(newNode);
-            idMap.set(oldNode.id, newNode);
-
-            if (oldNode.type === "Telecom/Osciloscopio" || oldNode.type === "Telecom/OsciloscopioOjo") {
-                activeOscilloscopes.delete(oldNode.id);
-                activeOscilloscopes.set(newNode.id, newNode);
+            if (Number.isFinite(newNode.id)) {
+                subNode.subgraph.last_node_id = Math.max(subNode.subgraph.last_node_id || 0, newNode.id);
             }
+            idMap.set(oldNode.id, newNode);
         });
 
         internalLinks.forEach(l => {
@@ -4624,8 +5786,8 @@
         });
 
         subNode.syncPortsFromInner();
-        subNode.subgraph.start();
         syncAllWidgets(subNode.subgraph);
+        registrarOsciloscopiosGlobal(subNode.subgraph);
 
         externalToConnectIn.forEach(item => {
             const extOrigin = currentGraph.getNodeById(item.origin_id);
@@ -4654,9 +5816,18 @@
 
     canvas.onNodeSelected = function(node) {
         if (node && (node.type === "Telecom/Osciloscopio" || node.type === "Telecom/OsciloscopioOjo")) {
+            if (!node._oscUid) node._oscUid = "osc_" + (++globalOscUidCounter);
+            if (!activeOscilloscopes.has(node._oscUid)) {
+                activeOscilloscopes.set(node._oscUid, node);
+                syncOscSelector(node._oscUid);
+            }
             const sel = document.getElementById("oscSelect");
-            sel.value = String(node.id);
-            dirtyPlots = true;
+            if (sel && sel.value !== String(node._oscUid)) {
+                sel.value = String(node._oscUid);
+                savedTimeRanges = { x: null, y: null };
+                lastSelectedOscUid = sel.value;
+            }
+            forcePlotUpdate();
         }
     };
 
@@ -4772,23 +5943,72 @@
     }
     window.addEventListener("resize", resizeCanvas);
 
+    function isGraphReachableFromMain(targetGraph, root = mainGraph, visited = new Set()) {
+        if (!root || visited.has(root)) return false;
+        if (root === targetGraph) return true;
+        visited.add(root);
+        const subs = root.findNodesByType ? root.findNodesByType("Telecom/Subgrafo") : [];
+        for (let sg of subs) {
+            if (sg.subgraph && isGraphReachableFromMain(targetGraph, sg.subgraph, visited)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function enterSubgraph(node) {
+        if (!node || !node.subgraph) return;
+        subgraphViewStack.push({
+            graph: currentGraph,
+            offset: [canvas.ds.offset[0], canvas.ds.offset[1]],
+            scale: canvas.ds.scale
+        });
         currentGraph = node.subgraph;
         canvas.setGraph(currentGraph);
-        document.getElementById("subgraph-banner").style.display = "block";
+        const bannerEl = document.getElementById("subgraph-banner");
+        bannerEl.style.display = "flex";
+
+        const nodes = currentGraph._nodes || [];
+        if (nodes.length > 0) {
+            let minTop = Infinity;
+            let minLeft = Infinity;
+            nodes.forEach(n => {
+                const topY = n.pos[1] - 30;
+                if (topY < minTop) minTop = topY;
+                if (n.pos[0] < minLeft) minLeft = n.pos[0];
+            });
+            canvas.ds.scale = 1;
+            const targetTop = (bannerEl.offsetTop + bannerEl.offsetHeight) + 20;
+            const targetLeft = 28;
+            canvas.ds.offset = [
+                minLeft < targetLeft ? (targetLeft - minLeft) : 0,
+                minTop < targetTop ? (targetTop - minTop) : 0
+            ];
+        }
+
         syncAllWidgets(currentGraph);
         dirtyPlots = true;
+        canvas.setDirty(true, true);
     }
 
     function exitSubgraph() {
         if (currentGraph._parent_node) {
             currentGraph._parent_node.syncPortsFromInner();
         }
-        currentGraph = mainGraph;
-        canvas.setGraph(mainGraph);
-        document.getElementById("subgraph-banner").style.display = "none";
-        syncAllWidgets(mainGraph);
+        const prev = subgraphViewStack.pop();
+        if (prev && prev.graph) {
+            currentGraph = prev.graph;
+            canvas.setGraph(currentGraph);
+            canvas.ds.offset = prev.offset;
+            canvas.ds.scale = prev.scale;
+        } else {
+            currentGraph = mainGraph;
+            canvas.setGraph(mainGraph);
+        }
+        document.getElementById("subgraph-banner").style.display = (currentGraph === mainGraph) ? "none" : "flex";
+        syncAllWidgets(currentGraph);
         dirtyPlots = true;
+        canvas.setDirty(true, true);
     }
 
     let lastExecutionTime = 0;
@@ -4798,8 +6018,9 @@
         if (isRunning) {
             if (timestamp - lastExecutionTime >= SIMULATION_INTERVAL_MS) {
                 lastExecutionTime = timestamp;
-                if (mainGraph.status === LiteGraph.LGraph.STATUS_RUNNING) {
-                    mainGraph.runStep(1);
+                mainGraph.runStep(1);
+                if (currentGraph && currentGraph !== mainGraph && !isGraphReachableFromMain(currentGraph)) {
+                    currentGraph.runStep(1);
                 }
                 canvas.draw(true, true);
             }
@@ -4869,6 +6090,7 @@
     }
 
     function clearCanvas() {
+        subgraphViewStack.length = 0;
         if (currentGraph !== mainGraph) {
             currentGraph = mainGraph;
             canvas.setGraph(mainGraph);
@@ -4877,13 +6099,18 @@
         mainGraph.clear();
         activeOscilloscopes.clear();
         oscCounter = 1;
+        lastSelectedOscUid = null;
         savedTimeRanges = { x: null, y: null };
         savedFreqRanges = { x: null, y: null };
+        const yTimeAuto = document.getElementById("yTimeAuto");
+        const yFreqAuto = document.getElementById("yFreqAuto");
+        if (yTimeAuto) yTimeAuto.checked = true;
+        if (yFreqAuto) yFreqAuto.checked = true;
+        syncYScaleInputStyles();
 
         const sel = document.getElementById("oscSelect");
         if (sel) sel.innerHTML = "";
 
-        mainGraph.start();
         dirtyPlots = true;
         updatePlots();
         canvas.setDirty(true, true);
@@ -4957,7 +6184,7 @@
                     let propKey = null;
                     if (w.name.includes("Etiqueta") || w.name.includes("Nombre") || w.name.includes("ID")) propKey = "nombre";
                     else if (w.name.includes("Señal")) propKey = "tipo";
-                    else if (w.name.includes("Amplitud")) propKey = "amp";
+                    else if (w.name.includes("Amplitud")) propKey = (node.properties.Ac !== undefined ? "Ac" : "amp");
                     else if (w.name.includes("Periodo T") || w.name.includes("Periodo Tb")) propKey = (node.type === "Telecom/OsciloscopioOjo" ? "tb" : "periodo");
                     else if (w.name.includes("Frec") || w.name.includes("Portadora") || w.name.includes("fc") || w.name.includes("f0")) propKey = (node.properties.fc !== undefined ? "fc" : "freq");
                     else if (w.name.includes("Ancho Bw") || w.name.includes("Ancho B")) propKey = "bw";
@@ -5023,23 +6250,137 @@
         g.setDirtyCanvas(true, true);
     }
 
+    function stripSerializedNodeLinks(nodeData) {
+        return {
+            ...nodeData,
+            inputs: Array.isArray(nodeData.inputs)
+                ? nodeData.inputs.map(inp => inp ? { ...inp, link: null } : inp)
+                : nodeData.inputs,
+            outputs: Array.isArray(nodeData.outputs)
+                ? nodeData.outputs.map(outp => outp ? { ...outp, links: [] } : outp)
+                : nodeData.outputs
+        };
+    }
+
+    function collectMaxGraphIds(graph, state, visited = new Set()) {
+        if (!graph || visited.has(graph)) return;
+        visited.add(graph);
+        if (Number.isFinite(graph.last_node_id) && graph.last_node_id > state.maxNodeId) {
+            state.maxNodeId = graph.last_node_id;
+        }
+        if (Number.isFinite(graph.last_link_id) && graph.last_link_id > state.maxLinkId) {
+            state.maxLinkId = graph.last_link_id;
+        }
+        (graph._nodes || []).forEach(n => {
+            if (Number.isFinite(n.id) && n.id > state.maxNodeId) state.maxNodeId = n.id;
+            if (n.subgraph) collectMaxGraphIds(n.subgraph, state, visited);
+        });
+        Object.keys(graph.links || {}).forEach(k => {
+            const lkId = Number(k);
+            if (Number.isFinite(lkId) && lkId > state.maxLinkId) state.maxLinkId = lkId;
+        });
+    }
+
+    function remapIncomingGraphData(graphData, state) {
+        if (!graphData || !Array.isArray(graphData.nodes)) return graphData;
+        const nodeIdMap = new Map();
+        const linkIdMap = new Map();
+
+        graphData.nodes.forEach(nd => {
+            const oldId = nd.id;
+            const newId = ++state.maxNodeId;
+            nodeIdMap.set(oldId, newId);
+            nd.id = newId;
+        });
+
+        if (Array.isArray(graphData.links)) {
+            const newLinks = [];
+            graphData.links.forEach(lk => {
+                if (!Array.isArray(lk) || lk.length < 5) return;
+                const oldLinkId = lk[0];
+                const newOrig = nodeIdMap.get(lk[1]);
+                const newDst = nodeIdMap.get(lk[3]);
+                if (newOrig === undefined || newDst === undefined) return;
+                const newLinkId = ++state.maxLinkId;
+                linkIdMap.set(oldLinkId, newLinkId);
+                const cloned = lk.slice();
+                cloned[0] = newLinkId;
+                cloned[1] = newOrig;
+                cloned[3] = newDst;
+                newLinks.push(cloned);
+            });
+            graphData.links = newLinks;
+        }
+
+        graphData.nodes.forEach(nd => {
+            if (Array.isArray(nd.inputs)) {
+                nd.inputs.forEach(inp => {
+                    if (inp && inp.link != null) {
+                        inp.link = linkIdMap.has(inp.link) ? linkIdMap.get(inp.link) : null;
+                    }
+                });
+            }
+            if (Array.isArray(nd.outputs)) {
+                nd.outputs.forEach(outp => {
+                    if (outp && Array.isArray(outp.links)) {
+                        outp.links = outp.links
+                            .map(lid => linkIdMap.get(lid))
+                            .filter(lid => lid !== undefined);
+                    }
+                });
+            }
+            if (nd.subgraph && Array.isArray(nd.subgraph.nodes)) {
+                remapIncomingGraphData(nd.subgraph, state);
+            }
+        });
+
+        graphData.last_node_id = state.maxNodeId;
+        graphData.last_link_id = state.maxLinkId;
+        return graphData;
+    }
+
+    function disambiguateOscNames(graphData, usedNames) {
+        if (!graphData || !Array.isArray(graphData.nodes)) return;
+        graphData.nodes.forEach(nd => {
+            if (nd.type === "Telecom/Osciloscopio" || nd.type === "Telecom/OsciloscopioOjo") {
+                if (!nd.properties) nd.properties = {};
+                let base = nd.properties.nombre || (nd.type === "Telecom/OsciloscopioOjo" ? "Diag. Ojo" : "Osciloscopio");
+                let candidate = base;
+                let suffix = 2;
+                while (usedNames.has(candidate)) {
+                    candidate = `${base} (${suffix++})`;
+                }
+                nd.properties.nombre = candidate;
+                usedNames.add(candidate);
+            }
+            if (nd.subgraph && Array.isArray(nd.subgraph.nodes)) {
+                disambiguateOscNames(nd.subgraph, usedNames);
+            }
+        });
+    }
+
     function restaurarEsquematico(data) {
         if (!data || !Array.isArray(data.nodes)) return;
 
-        const existingNodes = currentGraph._nodes || [];
+        const clonedData = JSON.parse(JSON.stringify(data));
+        let existingNodes = currentGraph._nodes || [];
+        if (currentGraph !== mainGraph && existingNodes.length === 0) {
+            exitSubgraph();
+            existingNodes = currentGraph._nodes || [];
+        }
+
         if (existingNodes.length === 0) {
-            mainGraph.configure(data);
+            subgraphViewStack.length = 0;
+            mainGraph.configure(clonedData);
             const subgrafos = mainGraph.findNodesByType("Telecom/Subgrafo");
             subgrafos.forEach(sgNode => {
                 if (sgNode.subgraph) {
-                    sgNode.subgraph.start();
                     sgNode.syncPortsFromInner();
                 }
             });
             syncAllWidgets(mainGraph);
             registrarOsciloscopiosGlobal(mainGraph);
             syncOscSelector();
-            mainGraph.start();
             mainGraph.runStep(1);
             dirtyPlots = true;
             updatePlots();
@@ -5047,6 +6388,17 @@
             resetView();
             return;
         }
+
+        const idState = { maxNodeId: 0, maxLinkId: 0 };
+        collectMaxGraphIds(mainGraph, idState);
+        if (currentGraph !== mainGraph) collectMaxGraphIds(currentGraph, idState);
+        remapIncomingGraphData(clonedData, idState);
+
+        const usedOscNames = new Set();
+        activeOscilloscopes.forEach(osc => {
+            if (osc && osc.properties && osc.properties.nombre) usedOscNames.add(osc.properties.nombre);
+        });
+        disambiguateOscNames(clonedData, usedOscNames);
 
         let maxExistingX = -Infinity;
         let minExistingY = Infinity;
@@ -5057,7 +6409,7 @@
         if (minExistingY === Infinity) minExistingY = 100;
 
         let minIncomingX = Infinity, minIncomingY = Infinity;
-        data.nodes.forEach(nd => {
+        clonedData.nodes.forEach(nd => {
             if (nd.pos) {
                 if (nd.pos[0] < minIncomingX) minIncomingX = nd.pos[0];
                 if (nd.pos[1] < minIncomingY) minIncomingY = nd.pos[1];
@@ -5068,36 +6420,35 @@
         const offsetX = (maxExistingX + 80) - minIncomingX;
         const offsetY = minExistingY - minIncomingY;
 
+        currentGraph.last_node_id = Math.max(currentGraph.last_node_id || 0, idState.maxNodeId);
+        currentGraph.last_link_id = Math.max(currentGraph.last_link_id || 0, idState.maxLinkId);
+
         const idMap = new Map();
         const newNodesList = [];
 
-        data.nodes.forEach(nodeData => {
+        clonedData.nodes.forEach(nodeData => {
             const newNode = LiteGraph.createNode(nodeData.type);
             if (!newNode) return;
 
-            newNode.configure(nodeData);
+            const cleanNodeData = stripSerializedNodeLinks(nodeData);
+
+            newNode.configure(cleanNodeData);
 
             if (nodeData.pos) {
                 newNode.pos = [nodeData.pos[0] + offsetX, nodeData.pos[1] + offsetY];
             }
 
-            currentGraph.add(newNode);
+            currentGraph.add(newNode, { doProcessChange: false });
             idMap.set(nodeData.id, newNode);
             newNodesList.push(newNode);
 
-            if (newNode.type === "Telecom/Osciloscopio" || newNode.type === "Telecom/OsciloscopioOjo") {
-                activeOscilloscopes.set(newNode.id, newNode);
-            }
-
             if (newNode.type === "Telecom/Subgrafo" && newNode.subgraph) {
-                newNode.subgraph.start();
                 newNode.syncPortsFromInner();
-                registrarOsciloscopiosGlobal(newNode.subgraph);
             }
         });
 
-        if (Array.isArray(data.links)) {
-            data.links.forEach(linkData => {
+        if (Array.isArray(clonedData.links)) {
+            clonedData.links.forEach(linkData => {
                 if (!linkData) return;
                 const origNodeId = linkData[1];
                 const origSlot = linkData[2];
@@ -5118,28 +6469,33 @@
         }
 
         syncAllWidgets(currentGraph);
+        registrarOsciloscopiosGlobal(mainGraph);
         syncOscSelector();
         mainGraph.runStep(1);
+        if (currentGraph && currentGraph !== mainGraph && !isGraphReachableFromMain(currentGraph)) {
+            currentGraph.runStep(1);
+        }
 
         dirtyPlots = true;
         updatePlots();
         canvas.setDirty(true, true);
     }
 
-    function registrarOsciloscopiosGlobal(graph) {
-        if (!graph || !graph.findNodesByType) return;
+    function registrarOsciloscopiosGlobal(graph, visited = new Set()) {
+        if (!graph || !graph.findNodesByType || visited.has(graph)) return;
+        visited.add(graph);
         const oscNodes = graph.findNodesByType("Telecom/Osciloscopio").concat(graph.findNodesByType("Telecom/OsciloscopioOjo"));
         oscNodes.forEach(node => {
-            activeOscilloscopes.set(node.id, node);
+            if (!node._oscUid) node._oscUid = "osc_" + (++globalOscUidCounter);
+            activeOscilloscopes.set(node._oscUid, node);
         });
         const subgrafos = graph.findNodesByType("Telecom/Subgrafo");
         subgrafos.forEach(sgNode => {
-            if (sgNode.subgraph) registrarOsciloscopiosGlobal(sgNode.subgraph);
+            if (sgNode.subgraph) registrarOsciloscopiosGlobal(sgNode.subgraph, visited);
         });
     }
 
     resizeCanvas();
-    mainGraph.start();
     requestAnimationFrame(mainLoop);
 </script>
 
