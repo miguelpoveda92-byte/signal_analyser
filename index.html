@@ -279,6 +279,72 @@
         .qmodal-chart-box {
             height: 210px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;
         }
+
+        /* Modal Exportar Datos CSV / TXT */
+        #export-data-modal {
+            display: none; position: fixed; inset: 0; z-index: 105;
+            background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(2px);
+            align-items: center; justify-content: center; padding: 16px;
+        }
+        #export-data-modal.open { display: flex; }
+        .emodal-card {
+            background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px;
+            width: 100%; max-width: 560px; max-height: 90vh; display: flex; flex-direction: column;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.22); overflow: hidden;
+        }
+        .emodal-body {
+            padding: 14px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+            font-size: 0.82rem; color: #1e293b;
+        }
+        .emodal-group {
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .emodal-label {
+            font-weight: 700; font-size: 0.78rem; color: #334155; text-transform: uppercase; letter-spacing: 0.4px;
+        }
+        .emodal-options {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 6px;
+        }
+        .emodal-opt {
+            display: flex; align-items: center; gap: 6px; padding: 7px 10px;
+            border: 1px solid #cbd5e1; border-radius: 7px; background: #f8fafc;
+            cursor: pointer; font-weight: 500; user-select: none; transition: all 0.15s ease;
+        }
+        .emodal-opt:hover { border-color: #93c5fd; background: #eff6ff; }
+        .emodal-opt input { margin: 0; cursor: pointer; }
+        .emodal-checks {
+            display: flex; flex-wrap: wrap; gap: 12px; padding: 4px 2px;
+        }
+        .emodal-checks label {
+            display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+            font-size: 0.8rem; color: #334155; user-select: none;
+        }
+        .emodal-preview {
+            background: #0f172a; color: #e2e8f0; border-radius: 7px; padding: 9px 11px;
+            font-family: Consolas, 'Courier New', monospace; font-size: 0.74rem; line-height: 1.4;
+            overflow-x: auto; white-space: pre; margin: 0; max-height: 135px;
+        }
+        .emodal-snippet {
+            background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 7px; padding: 8px 10px;
+            font-size: 0.75rem; color: #334155; line-height: 1.5;
+        }
+        .emodal-snippet code {
+            background: #e2e8f0; color: #0f172a; padding: 1px 5px; border-radius: 4px;
+            font-family: Consolas, 'Courier New', monospace; font-size: 0.73rem;
+        }
+        .emodal-footer {
+            padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e2e8f0;
+            display: flex; justify-content: flex-end; gap: 8px;
+        }
+        .emodal-btn {
+            padding: 7px 14px; border-radius: 7px; font-size: 0.82rem; font-weight: 600;
+            cursor: pointer; border: 1px solid #cbd5e1; background: #ffffff; color: #334155;
+        }
+        .emodal-btn:hover { background: #f1f5f9; }
+        .emodal-btn-primary {
+            background: #059669; border-color: #047857; color: #ffffff;
+        }
+        .emodal-btn-primary:hover { background: #047857; }
     </style>
 </head>
 <body>
@@ -496,12 +562,79 @@
             <div class="ctrl-item">
                 <button class="action-btn" id="btnToggleFreq" style="padding: 2px 7px; margin:0;" onclick="toggleFreqPlot()">Ocultar |X(f)|</button>
             </div>
-            <div class="ctrl-item" style="margin-left: auto;">
+            <div class="ctrl-item" style="margin-left: auto; gap: 6px;">
+                <button class="action-btn" style="padding: 2px 8px; margin: 0; background: #ecfdf5; color: #047857; border-color: #6ee7b7; font-weight: 700;" onclick="openExportDataModal()" title="Exportar datos de las gráficas en formato CSV o TXT para MATLAB / Python">📥 Exportar CSV/TXT</button>
                 <button class="action-btn" style="padding: 2px 8px; margin: 0; background: #e0f2fe; color: #0369a1; border-color: #7dd3fc; font-weight: 700;" onclick="forcePlotUpdate()" title="Actualizar traza gráfica con los datos actuales">🔄 Refrescar Gráfica</button>
             </div>
         </div>
         <div id="plot-time" class="plot-container"></div>
         <div id="plot-freq" class="plot-container"></div>
+    </div>
+
+    <!-- Modal Exportar Datos de Gráficas (CSV / TXT) -->
+    <div id="export-data-modal" onclick="if(event.target === this) closeExportDataModal()">
+        <div class="emodal-card">
+            <div class="qmodal-header">
+                <span>📥 Exportar Datos de Gráficas (CSV / TXT)</span>
+                <button class="qmodal-close" onclick="closeExportDataModal()">✕ Cerrar</button>
+            </div>
+            <div class="qmodal-meta" id="emodal-meta"></div>
+            <div class="emodal-body">
+                <div class="emodal-group">
+                    <div class="emodal-label">1. Gráfica a exportar</div>
+                    <div class="emodal-options">
+                        <label class="emodal-opt">
+                            <input type="radio" name="exportGraph" value="time" checked onchange="refreshExportPreview()">
+                            <span id="emodal-lbl-time">Dominio del Tiempo</span>
+                        </label>
+                        <label class="emodal-opt">
+                            <input type="radio" name="exportGraph" value="freq" onchange="refreshExportPreview()">
+                            <span>Espectro |X(f)|</span>
+                        </label>
+                        <label class="emodal-opt">
+                            <input type="radio" name="exportGraph" value="both" onchange="refreshExportPreview()">
+                            <span>Ambas (1 archivo)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="emodal-group">
+                    <div class="emodal-label">2. Formato de archivo</div>
+                    <div class="emodal-options">
+                        <label class="emodal-opt">
+                            <input type="radio" name="exportFormat" value="csv" checked onchange="onExportFormatChanged()">
+                            <span>CSV (.csv) — Comas</span>
+                        </label>
+                        <label class="emodal-opt">
+                            <input type="radio" name="exportFormat" value="txt" onchange="onExportFormatChanged()">
+                            <span>TXT (.txt) — Tabulaciones</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="emodal-checks">
+                    <label title="Exportar únicamente los puntos dentro del zoom actual en el eje X">
+                        <input type="checkbox" id="exportOnlyVisible" onchange="refreshExportPreview()">
+                        <span>Solo rango visible (zoom actual)</span>
+                    </label>
+                    <label title="Añadir líneas de metadatos iniciadas por # al principio del archivo">
+                        <input type="checkbox" id="exportIncludeMeta" onchange="refreshExportPreview()">
+                        <span>Incluir metadatos (#)</span>
+                    </label>
+                </div>
+
+                <div class="emodal-group">
+                    <div class="emodal-label">Vista previa (<span id="emodal-filename-preview">archivo.csv</span>)</div>
+                    <pre class="emodal-preview" id="emodal-preview"></pre>
+                </div>
+
+                <div class="emodal-snippet" id="emodal-snippet"></div>
+            </div>
+            <div class="emodal-footer">
+                <button class="emodal-btn" onclick="closeExportDataModal()">Cancelar</button>
+                <button class="emodal-btn emodal-btn-primary" onclick="executeDataExport()">⬇ Descargar</button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal Tabla de Niveles de Cuantización / Codificación PCM -->
@@ -5254,6 +5387,8 @@
         }
     }
 
+    let lastPlottedData = null;
+
     function updatePlots() {
         if (!dirtyPlots) return;
         dirtyPlots = false;
@@ -5280,6 +5415,7 @@
 
         let timeTraces = [];
         let xLabel = isDisc ? "n (índice entero)" : "Tiempo t (s)";
+        let exportTimeDataset = null;
 
         if (isEyeScope && in1 && in1.values) {
             const Tb = Math.max(0.005, Number(oscNode.properties.tb || 0.5));
@@ -5308,6 +5444,7 @@
             let eyeTimeAxis = [];
             for (let s = 0; s < samplesPerTrace; s++) eyeTimeAxis.push(s * dtTrace);
 
+            const eyeExportTraces = [];
             for (let k = 0; k < numTraces; k++) {
                 let startK = tBase + k * Tb;
                 if (startK > tMax || startK + T_eye < tMin) continue;
@@ -5321,6 +5458,7 @@
                     yTrace.push(evalEyeSignal(ti));
                 }
 
+                eyeExportTraces.push(yTrace);
                 timeTraces.push({
                     x: eyeTimeAxis,
                     y: yTrace,
@@ -5331,6 +5469,17 @@
                     name: `Ojo (2·Tb)`
                 });
             }
+
+            const decisionTimes = eyeCfg.decisionFracsTb.map(fracTb => fracTb * Tb);
+            const decisionCol = eyeTimeAxis.map((_, idx) => idx < decisionTimes.length ? decisionTimes[idx] : NaN);
+
+            exportTimeDataset = {
+                domainLabel: "Diagrama de Ojo (2*Tb)",
+                fileSuffix: "ojo",
+                headers: ["t_eye_s", ...eyeExportTraces.map((_, idx) => `traza_${idx + 1}_V`), "t_decision_s"],
+                columns: [eyeTimeAxis.slice(), ...eyeExportTraces, decisionCol],
+                extraCurves: [`Instante decisión (${eyeCfg.decisionLabel})`]
+            };
 
             let yMinEye = -1.5, yMaxEye = 1.5;
             if (timeTraces.length > 0) {
@@ -5400,6 +5549,12 @@
                 marker: { color: '#1d4ed8', size: 6 },
                 name: sigName
             });
+            exportTimeDataset = {
+                domainLabel: "Tiempo Discreto x[n]",
+                fileSuffix: "tiempo_discreto",
+                headers: ["n", "amplitud_V"],
+                columns: [in1.stemX.slice(), in1.stemY.slice()]
+            };
         } else {
             timeTraces.push({
                 x: t,
@@ -5409,6 +5564,12 @@
                 line: { color: '#2563eb', width: 2 },
                 name: sigName
             });
+            exportTimeDataset = {
+                domainLabel: "Tiempo Continuo x(t)",
+                fileSuffix: "tiempo",
+                headers: ["t_s", "amplitud_V"],
+                columns: [t.slice(), y.slice()]
+            };
         }
 
         const defaultTimeRange = isEyeScope ? [0, 2 * Math.max(0.005, Number(oscNode.properties.tb || 0.5))] : [tMin, tMax];
@@ -5456,6 +5617,7 @@
             legend: { x: 0.98, xanchor: 'right', y: 0.98, bgcolor: 'rgba(255,255,255,0.75)' }
         }, plotConfig);
 
+        let exportFreqDataset = null;
         if (showFreqSpectrum) {
             let signalDt = in1 && in1.dt ? in1.dt : dt;
             let spectrum = in1 ? computeSpectrum(in1, signalDt, active_f_axis) : new Array(active_f_axis.length).fill(0);
@@ -5469,6 +5631,9 @@
                 line: { color: '#e11d48', width: 2 },
                 name: `|${sigName}(f)|`
             }];
+
+            const freqExportHeaders = ["f_Hz", "magnitud_Xf"];
+            const freqExportCols = [active_f_axis.slice(), spectrum.slice()];
 
             if (in1 && in1.filterParams && in1.filterParams.showH) {
                 const fp = in1.filterParams;
@@ -5484,7 +5649,17 @@
                     line: { color: '#475569', width: 2, dash: 'dash' },
                     name: '|H(f)| filtro'
                 });
+                freqExportHeaders.push("H_f_real", "H_f_escalado");
+                freqExportCols.push(H_active, scaledH);
             }
+
+            exportFreqDataset = {
+                domainLabel: "Espectro de Frecuencia |X(f)|",
+                fileSuffix: "espectro",
+                headers: freqExportHeaders,
+                columns: freqExportCols,
+                extraCurves: (in1 && in1.filterParams && in1.filterParams.showH) ? ["|H(f)| filtro"] : []
+            };
 
             const freqXAxis = {
                 title: 'Frecuencia f (Hz)',
@@ -5520,8 +5695,340 @@
             }, plotConfig);
         }
 
+        lastPlottedData = {
+            oscName,
+            sigName,
+            isEyeScope,
+            isDiscrete: isDisc,
+            tMin,
+            tMax,
+            fMax,
+            tb: isEyeScope ? Math.max(0.005, Number(oscNode.properties.tb || 0.5)) : null,
+            time: exportTimeDataset,
+            freq: exportFreqDataset,
+            _in1: in1,
+            _dt: dt
+        };
+
         bindPlotZoomListeners();
     }
+
+    // ==========================================
+    // 4B. EXPORTACIÓN DE DATOS DE GRÁFICAS (CSV / TXT)
+    // ==========================================
+    function sanitizeExportFilename(str) {
+        const cleaned = String(str || "senal")
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9_-]+/g, "_")
+            .replace(/^_+|_+$/g, "");
+        return cleaned || "senal";
+    }
+
+    function formatExportNumber(val) {
+        if (!Number.isFinite(val)) return "NaN";
+        if (Math.abs(val) < 1e-15) return "0";
+        return String(Number(val.toPrecision(10)));
+    }
+
+    function ensureFreqExportDataset(snapshot) {
+        if (!snapshot) return null;
+        if (snapshot.freq) return snapshot.freq;
+        const { axis: active_f_axis } = getActiveFrequencyAxis(snapshot.fMax || 50);
+        const in1 = snapshot._in1;
+        const signalDt = (in1 && in1.dt) ? in1.dt : (snapshot._dt || 0.01);
+        const spectrum = in1 ? computeSpectrum(in1, signalDt, active_f_axis) : new Array(active_f_axis.length).fill(0);
+        const headers = ["f_Hz", "magnitud_Xf"];
+        const columns = [active_f_axis.slice(), spectrum.slice()];
+        if (in1 && in1.filterParams && in1.filterParams.showH) {
+            const fp = in1.filterParams;
+            const H_active = active_f_axis.map(f => evaluateFilterH(f, fp.tipo, fp.aprox, fp.fc, fp.bw, fp.orden, fp.gain));
+            const maxSpec = Math.max(...spectrum, 0.5);
+            const maxH = Math.max(...H_active, 1);
+            const scaledH = H_active.map(v => v * (maxSpec / maxH));
+            headers.push("H_f_real", "H_f_escalado");
+            columns.push(H_active, scaledH);
+        }
+        return {
+            domainLabel: "Espectro de Frecuencia |X(f)|",
+            fileSuffix: "espectro",
+            headers,
+            columns,
+            extraCurves: (in1 && in1.filterParams && in1.filterParams.showH) ? ["|H(f)| filtro"] : []
+        };
+    }
+
+    function combineExportDatasets(timeDs, freqDs) {
+        if (!timeDs) return freqDs;
+        if (!freqDs) return timeDs;
+        const nT = (timeDs.columns && timeDs.columns[0]) ? timeDs.columns[0].length : 0;
+        const nF = (freqDs.columns && freqDs.columns[0]) ? freqDs.columns[0].length : 0;
+        const maxRows = Math.max(nT, nF);
+
+        const padCol = (col) => {
+            const out = new Array(maxRows);
+            for (let i = 0; i < maxRows; i++) {
+                out[i] = i < col.length ? col[i] : NaN;
+            }
+            return out;
+        };
+
+        return {
+            domainLabel: `${timeDs.domainLabel} + ${freqDs.domainLabel}`,
+            fileSuffix: "completo",
+            headers: [...timeDs.headers, ...freqDs.headers],
+            columns: [...timeDs.columns.map(padCol), ...freqDs.columns.map(padCol)],
+            extraCurves: [...(timeDs.extraCurves || []), ...(freqDs.extraCurves || [])],
+            isCombined: true,
+            timeRows: nT,
+            freqRows: nF
+        };
+    }
+
+    function getVisiblePlotXRange(plotDivId) {
+        const div = document.getElementById(plotDivId);
+        const r = div && div._fullLayout && div._fullLayout.xaxis && div._fullLayout.xaxis.range;
+        if (Array.isArray(r) && Number.isFinite(r[0]) && Number.isFinite(r[1])) {
+            return [Math.min(r[0], r[1]), Math.max(r[0], r[1])];
+        }
+        return null;
+    }
+
+    function filterDatasetByRange(dataset, xRange) {
+        if (!dataset || !Array.isArray(dataset.columns) || dataset.columns.length === 0) return dataset;
+        if (!xRange) return dataset;
+        const [xMin, xMax] = xRange;
+        const xCol = dataset.columns[0];
+        const keptIndices = [];
+        for (let i = 0; i < xCol.length; i++) {
+            const xv = xCol[i];
+            if (xv >= xMin - 1e-12 && xv <= xMax + 1e-12) keptIndices.push(i);
+        }
+        return {
+            ...dataset,
+            columns: dataset.columns.map(col => keptIndices.map(idx => col[idx]))
+        };
+    }
+
+    function buildExportFileContent(dataset, snapshot, format, includeMeta) {
+        const sep = format === "txt" ? "\t" : ",";
+        const lines = [];
+        const numRows = (dataset && dataset.columns && dataset.columns[0]) ? dataset.columns[0].length : 0;
+
+        if (includeMeta) {
+            lines.push(`# SimuTelecom - Exportacion de datos (${format.toUpperCase()})`);
+            lines.push(`# Osciloscopio: ${snapshot.oscName} | Senal: ${snapshot.sigName}`);
+            if (dataset.isCombined) {
+                lines.push(`# Grafica: ${dataset.domainLabel} | Muestras tiempo: ${dataset.timeRows} | Puntos espectro: ${dataset.freqRows} (relleno NaN si difieren)`);
+                lines.push(`# Ventana temporal: [${snapshot.tMin}, ${snapshot.tMax}] s | Rango frecuencial: [-${snapshot.fMax}, ${snapshot.fMax}] Hz`);
+            } else {
+                lines.push(`# Grafica: ${dataset.domainLabel} | Muestras: ${numRows}`);
+                if (dataset.fileSuffix === "espectro") {
+                    lines.push(`# Rango frecuencial: [-${snapshot.fMax}, ${snapshot.fMax}] Hz`);
+                } else if (dataset.fileSuffix === "ojo" && snapshot.tb) {
+                    lines.push(`# Ventana diagrama de ojo: [0, ${(2 * snapshot.tb).toFixed(6)}] s (Tb=${snapshot.tb} s)`);
+                } else {
+                    lines.push(`# Ventana temporal: [${snapshot.tMin}, ${snapshot.tMax}] s`);
+                }
+            }
+            if (dataset.extraCurves && dataset.extraCurves.length > 0) {
+                lines.push(`# Curvas adicionales incluidas: ${dataset.extraCurves.join(", ")}`);
+            }
+            const fp = snapshot._in1 && snapshot._in1.filterParams;
+            if (fp && fp.showH && (dataset.fileSuffix === "espectro" || dataset.isCombined)) {
+                lines.push(`# Filtro |H(f)|: ${fp.tipo} (${fp.aprox}), fc=${fp.fc} Hz, orden=${fp.orden}, ganancia=${fp.gain}`);
+            }
+        }
+
+        if (format === "txt" && includeMeta) {
+            lines.push("# " + dataset.headers.join(sep));
+        } else {
+            lines.push(dataset.headers.join(sep));
+        }
+
+        const numCols = dataset.columns.length;
+        for (let r = 0; r < numRows; r++) {
+            const rowVals = new Array(numCols);
+            for (let c = 0; c < numCols; c++) {
+                rowVals[c] = formatExportNumber(dataset.columns[c][r]);
+            }
+            lines.push(rowVals.join(sep));
+        }
+
+        return lines.join("\n") + "\n";
+    }
+
+    function downloadExportTextFile(content, filename, format) {
+        const mime = format === "txt" ? "text/plain;charset=utf-8" : "text/csv;charset=utf-8";
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function getExportSelectionState() {
+        const graphEl = document.querySelector('input[name="exportGraph"]:checked');
+        const fmtEl = document.querySelector('input[name="exportFormat"]:checked');
+        const onlyVisEl = document.getElementById("exportOnlyVisible");
+        const metaEl = document.getElementById("exportIncludeMeta");
+        return {
+            graphChoice: graphEl ? graphEl.value : "time",
+            format: fmtEl ? fmtEl.value : "csv",
+            onlyVisible: !!(onlyVisEl && onlyVisEl.checked),
+            includeMeta: !!(metaEl && metaEl.checked)
+        };
+    }
+
+    function buildExportPayloadForChoice(choiceKey) {
+        if (!lastPlottedData) return null;
+        const state = getExportSelectionState();
+        let dataset = null;
+
+        if (choiceKey === "both") {
+            const rawTime = lastPlottedData.time;
+            const rawFreq = ensureFreqExportDataset(lastPlottedData);
+            const timeRange = state.onlyVisible ? getVisiblePlotXRange("plot-time") : null;
+            const freqRange = state.onlyVisible ? getVisiblePlotXRange("plot-freq") : null;
+            const filteredTime = filterDatasetByRange(rawTime, timeRange);
+            const filteredFreq = filterDatasetByRange(rawFreq, freqRange);
+            dataset = combineExportDatasets(filteredTime, filteredFreq);
+        } else {
+            const rawDataset = choiceKey === "freq"
+                ? ensureFreqExportDataset(lastPlottedData)
+                : lastPlottedData.time;
+            if (!rawDataset) return null;
+            const xRange = state.onlyVisible
+                ? getVisiblePlotXRange(choiceKey === "freq" ? "plot-freq" : "plot-time")
+                : null;
+            dataset = filterDatasetByRange(rawDataset, xRange);
+        }
+
+        if (!dataset) return null;
+        const baseName = sanitizeExportFilename(lastPlottedData.oscName);
+        const filename = `${baseName}_${dataset.fileSuffix}.${state.format}`;
+        const content = buildExportFileContent(dataset, lastPlottedData, state.format, state.includeMeta);
+        return { filename, content, dataset, format: state.format };
+    }
+
+    function openExportDataModal() {
+        if (!lastPlottedData) {
+            dirtyPlots = true;
+            updatePlots();
+        }
+        if (!lastPlottedData) return;
+
+        const metaEl = document.getElementById("emodal-meta");
+        const lblTime = document.getElementById("emodal-lbl-time");
+        if (lblTime) {
+            lblTime.textContent = lastPlottedData.isEyeScope ? "Diagrama de Ojo" : "Dominio del Tiempo";
+        }
+        const timePts = (lastPlottedData.time && lastPlottedData.time.columns[0]) ? lastPlottedData.time.columns[0].length : 0;
+        const freqDs = ensureFreqExportDataset(lastPlottedData);
+        const freqPts = (freqDs && freqDs.columns[0]) ? freqDs.columns[0].length : 0;
+        const extraList = [
+            ...((lastPlottedData.time && lastPlottedData.time.extraCurves) || []),
+            ...((freqDs && freqDs.extraCurves) || [])
+        ];
+
+        if (metaEl) {
+            metaEl.innerHTML = `
+                <span><b>Osciloscopio:</b> ${lastPlottedData.oscName}</span>
+                <span><b>Señal:</b> ${lastPlottedData.sigName}</span>
+                <span><b>Muestras tiempo:</b> ${timePts}</span>
+                <span><b>Puntos espectro:</b> ${freqPts}</span>
+                ${extraList.length > 0 ? `<span><b>Curvas extra:</b> ${extraList.join(", ")}</span>` : ""}
+            `;
+        }
+
+        refreshExportPreview();
+        document.getElementById("export-data-modal").classList.add("open");
+    }
+
+    function closeExportDataModal() {
+        document.getElementById("export-data-modal").classList.remove("open");
+    }
+
+    function onExportFormatChanged() {
+        const state = getExportSelectionState();
+        const metaEl = document.getElementById("exportIncludeMeta");
+        if (metaEl) {
+            metaEl.checked = (state.format === "txt");
+        }
+        refreshExportPreview();
+    }
+
+    function refreshExportPreview() {
+        if (!lastPlottedData) return;
+        const state = getExportSelectionState();
+        const payload = buildExportPayloadForChoice(state.graphChoice);
+        const prevEl = document.getElementById("emodal-preview");
+        const fnEl = document.getElementById("emodal-filename-preview");
+        const snipEl = document.getElementById("emodal-snippet");
+
+        if (!payload) {
+            if (prevEl) prevEl.textContent = "(Sin datos disponibles)";
+            return;
+        }
+
+        if (fnEl) {
+            fnEl.textContent = payload.filename;
+        }
+
+        if (prevEl) {
+            const allLines = payload.content.trimEnd().split("\n");
+            const shown = allLines.slice(0, 7);
+            if (allLines.length > 7) shown.push(`... (${allLines.length} líneas en total)`);
+            prevEl.textContent = shown.join("\n");
+        }
+
+        if (snipEl) {
+            const fn = payload.filename;
+            if (state.format === "csv") {
+                const pyLine = state.includeMeta
+                    ? `pd.read_csv('${fn}', comment='#')`
+                    : `pd.read_csv('${fn}')`;
+                const mlLine = state.includeMeta
+                    ? `readmatrix('${fn}', 'CommentStyle', '#')`
+                    : `readtable('${fn}')`;
+                snipEl.innerHTML = `
+                    <b>MATLAB:</b> <code>T = ${mlLine};</code><br>
+                    <b>Python:</b> <code>df = ${pyLine}</code>
+                `;
+            } else {
+                const pyLine = state.includeMeta
+                    ? `np.loadtxt('${fn}')`
+                    : `np.loadtxt('${fn}', skiprows=1)`;
+                const mlLine = state.includeMeta
+                    ? `readmatrix('${fn}', 'CommentStyle', '#')`
+                    : `readtable('${fn}')`;
+                snipEl.innerHTML = `
+                    <b>MATLAB:</b> <code>M = ${mlLine};</code><br>
+                    <b>Python:</b> <code>data = ${pyLine}</code>
+                `;
+            }
+        }
+    }
+
+    function executeDataExport() {
+        if (!lastPlottedData) return;
+        const state = getExportSelectionState();
+        const payload = buildExportPayloadForChoice(state.graphChoice);
+        if (payload) downloadExportTextFile(payload.content, payload.filename, payload.format);
+        closeExportDataModal();
+    }
+
+    window.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") {
+            const expModal = document.getElementById("export-data-modal");
+            if (expModal && expModal.classList.contains("open")) {
+                closeExportDataModal();
+            }
+        }
+    });
 
     // ==========================================
     // 5. SELECCIÓN MÚLTIPLE Y ENCAPSULADO EN SUBSISTEMA
