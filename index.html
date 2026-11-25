@@ -532,10 +532,15 @@
                 <select id="oscSelect" onchange="forcePlotUpdate()"></select>
             </div>
             <div class="ctrl-item">
-                <label>Tiempo (s):</label>
+                <label>Tiempo:</label>
                 <input type="number" id="tMin" value="-5.0" step="0.5" oninput="onTimeRangeChanged()" onchange="onTimeRangeChanged()">
                 <span>a</span>
                 <input type="number" id="tMax" value="5.0" step="0.5" oninput="onTimeRangeChanged()" onchange="onTimeRangeChanged()">
+                <select id="tUnit" title="Unidad de tiempo del eje horizontal" onchange="onTimeRangeChanged()">
+                    <option value="s" selected>s</option>
+                    <option value="ms">ms</option>
+                    <option value="µs">µs</option>
+                </select>
             </div>
             <div class="ctrl-item">
                 <label>Y Tiempo (V):</label>
@@ -547,8 +552,16 @@
                 </label>
             </div>
             <div class="ctrl-item">
-                <label>Frec ±(Hz):</label>
-                <input type="number" id="fMax" value="50" step="5" min="0.1" max="500" oninput="forcePlotUpdate()" onchange="forcePlotUpdate()">
+                <label>Frec:</label>
+                <input type="number" id="fMin" value="-50" step="5" style="width: 68px;" oninput="forcePlotUpdate()" onchange="forcePlotUpdate()">
+                <span>a</span>
+                <input type="number" id="fMax" value="50" step="5" style="width: 68px;" oninput="forcePlotUpdate()" onchange="forcePlotUpdate()">
+                <select id="fUnit" title="Unidad de frecuencia del eje horizontal" onchange="forcePlotUpdate()">
+                    <option value="Hz" selected>Hz</option>
+                    <option value="kHz">kHz</option>
+                    <option value="MHz">MHz</option>
+                    <option value="GHz">GHz</option>
+                </select>
             </div>
             <div class="ctrl-item" id="ctrlFreqY">
                 <label>Y |X(f)|:</label>
@@ -723,12 +736,47 @@
         }
     }
 
+    const FREQ_UNITS = { "Hz": 1, "kHz": 1e3, "MHz": 1e6, "GHz": 1e9 };
+    const FREQ_UNIT_LIST = ["Hz", "kHz", "MHz", "GHz"];
+    const TIME_UNITS = { "s": 1, "ms": 1e-3, "µs": 1e-6, "us": 1e-6 };
+    const TIME_UNIT_LIST = ["s", "ms", "µs"];
+
+    function getFreqMultiplier(unit) {
+        return FREQ_UNITS[unit] || 1;
+    }
+
+    function getTimeMultiplier(unit) {
+        return TIME_UNITS[unit] || 1;
+    }
+
+    function freqToHz(val, unit) {
+        const n = Number(val);
+        return (Number.isFinite(n) ? n : 0) * getFreqMultiplier(unit);
+    }
+
+    function timeToSec(val, unit) {
+        const n = Number(val);
+        return (Number.isFinite(n) ? n : 0) * getTimeMultiplier(unit);
+    }
+
+    function getPlotTimeUnit() {
+        const el = document.getElementById("tUnit");
+        return (el && TIME_UNITS[el.value]) ? el.value : "s";
+    }
+
+    function getPlotFreqUnit() {
+        const el = document.getElementById("fUnit");
+        return (el && FREQ_UNITS[el.value]) ? el.value : "Hz";
+    }
+
     function getCurrentTimeVector() {
+        const tUnit = getPlotTimeUnit();
+        const tScale = getTimeMultiplier(tUnit);
         const rawMin = parseFloat(document.getElementById("tMin").value);
         const rawMax = parseFloat(document.getElementById("tMax").value);
-        let tMin = Number.isFinite(rawMin) ? rawMin : -5.0;
-        let tMax = Number.isFinite(rawMax) ? rawMax : 5.0;
-        if (tMin >= tMax) tMin = tMax - 0.1;
+        let tMin = (Number.isFinite(rawMin) ? rawMin : -5.0) * tScale;
+        let tMax = (Number.isFinite(rawMax) ? rawMax : 5.0) * tScale;
+        if (tMin >= tMax) tMin = tMax - 0.1 * tScale;
 
         let dt = (tMax - tMin) / (N - 1);
         let timeArray = new Array(N);
@@ -766,32 +814,119 @@
         return sigObj.values[i0] * (1 - frac) + sigObj.values[i0 + 1] * frac;
     }
 
-    function getActiveFrequencyAxis(fMax) {
+    function getActiveFrequencyAxis(fMin, fMax) {
+        if (fMax === undefined) {
+            fMax = Math.abs(fMin) || 50.0;
+            fMin = -fMax;
+        }
+        if (fMin >= fMax) fMin = fMax - 1.0;
         const NUM_FREQ_POINTS = 801;
-        const df = (2 * fMax) / (NUM_FREQ_POINTS - 1);
+        const df = (fMax - fMin) / (NUM_FREQ_POINTS - 1);
         const axis = new Array(NUM_FREQ_POINTS);
         for (let i = 0; i < NUM_FREQ_POINTS; i++) {
-            axis[i] = -fMax + i * df;
+            axis[i] = fMin + i * df;
         }
         return { axis: axis, df: df };
     }
 
-    function computeSpectrum(signalObj, currentDt, active_f_axis) {
-        if (!signalObj) return new Array(active_f_axis.length).fill(0);
-        if (signalObj.isAnalyticDelta) return active_f_axis.map(() => Math.abs(signalObj.deltaWeight || 0));
+    function sincPi(u) {
+        if (Math.abs(u) < 1e-8) return 1.0;
+        const x = Math.PI * u;
+        return Math.sin(x) / x;
+    }
+
+    function computeComplexSpectrum(signalObj, currentDt, active_f_axis) {
+        const len = active_f_axis.length;
+        const reArr = new Float64Array(len);
+        const imArr = new Float64Array(len);
+        if (!signalObj) return { re: reArr, im: imArr };
+
+        const { t: currentT, tMin, tMax, T: T_win } = getCurrentTimeVector();
+        const tCenter = 0.5 * (tMin + tMax);
+
+        if (signalObj.isAnalyticDelta) {
+            const w = signalObj.deltaWeight || 0;
+            for (let i = 0; i < len; i++) reArr[i] = w;
+            return { re: reArr, im: imArr };
+        }
+
+        // Espectro analítico exacto para Generador Continuo sinusoidal (evita aliasing en kHz/MHz/GHz)
+        if (signalObj.sourceNode && signalObj.sourceNode.type === "Telecom/GeneradorContinuo") {
+            const p = signalObj.sourceNode.properties;
+            if (p.tipo === "Coseno" || p.tipo === "Seno") {
+                const amp = Number(p.amp) || 0;
+                const f0 = freqToHz(p.freq, p.freqUnit);
+                const isSin = (p.tipo === "Seno");
+                for (let i = 0; i < len; i++) {
+                    const f = active_f_axis[i];
+                    const fm = f - f0;
+                    const fp = f + f0;
+                    const sm = sincPi(fm * T_win);
+                    const sp = sincPi(fp * T_win);
+                    const angM = -2 * Math.PI * fm * tCenter;
+                    const angP = -2 * Math.PI * fp * tCenter;
+                    const reM = sm * Math.cos(angM), imM = sm * Math.sin(angM);
+                    const reP = sp * Math.cos(angP), imP = sp * Math.sin(angP);
+                    if (!isSin) {
+                        reArr[i] = 0.5 * amp * (reM + reP);
+                        imArr[i] = 0.5 * amp * (imM + imP);
+                    } else {
+                        // (1 / 2j) * (Zm - Zp) = -0.5j * (Zm - Zp) => Re = 0.5*(imM - imP), Im = -0.5*(reM - reP)
+                        reArr[i] = 0.5 * amp * (imM - imP);
+                        imArr[i] = -0.5 * amp * (reM - reP);
+                    }
+                }
+                return { re: reArr, im: imArr };
+            }
+        }
+
+        // Teorema de desplazamiento en frecuencia para Modulador AM (exacto a cualquier portadora MHz/GHz)
+        if (signalObj.amMeta) {
+            const { fc, Ac, ka, modulatingSignal } = signalObj.amMeta;
+            const fMinus = new Array(len);
+            const fPlus = new Array(len);
+            for (let i = 0; i < len; i++) {
+                fMinus[i] = active_f_axis[i] - fc;
+                fPlus[i] = active_f_axis[i] + fc;
+            }
+            const M_minus = modulatingSignal ? computeComplexSpectrum(modulatingSignal, currentDt, fMinus) : null;
+            const M_plus = modulatingSignal ? computeComplexSpectrum(modulatingSignal, currentDt, fPlus) : null;
+            const sbScale = 0.5 * Ac * ka;
+
+            for (let i = 0; i < len; i++) {
+                const fm = fMinus[i];
+                const fp = fPlus[i];
+                const sm = sincPi(fm * T_win);
+                const sp = sincPi(fp * T_win);
+                const angM = -2 * Math.PI * fm * tCenter;
+                const angP = -2 * Math.PI * fp * tCenter;
+                let re = 0.5 * Ac * (sm * Math.cos(angM) + sp * Math.cos(angP));
+                let im = 0.5 * Ac * (sm * Math.sin(angM) + sp * Math.sin(angP));
+                if (M_minus && M_plus) {
+                    re += sbScale * (M_minus.re[i] + M_plus.re[i]);
+                    im += sbScale * (M_minus.im[i] + M_plus.im[i]);
+                }
+                reArr[i] = re;
+                imArr[i] = im;
+            }
+            return { re: reArr, im: imArr };
+        }
 
         if (signalObj.isSampledSignal && signalObj.sampleInstants) {
             const Ts = signalObj.sampledTs || (1 / (signalObj.fs_sample || 20));
             const samples = signalObj.sampleInstants;
-            return active_f_axis.map(f => {
+            for (let k = 0; k < len; k++) {
+                const f = active_f_axis[k];
                 let re = 0, im = 0;
                 for (let i = 0; i < samples.length; i++) {
                     let angle = -2 * Math.PI * f * samples[i].t;
                     re += samples[i].v * Math.cos(angle);
                     im += samples[i].v * Math.sin(angle);
                 }
-                return Math.sqrt(re * re + im * im) * Ts;
-            });
+                reArr[k] = re * Ts;
+                imArr[k] = im * Ts;
+            }
+            return { re: reArr, im: imArr };
         }
 
         const x = signalObj.values;
@@ -800,7 +935,8 @@
         if (isDisc && signalObj.stemX && signalObj.stemY) {
             const n_vals = signalObj.stemX;
             const x_vals = signalObj.stemY;
-            return active_f_axis.map(f => {
+            for (let k = 0; k < len; k++) {
+                const f = active_f_axis[k];
                 let re = 0, im = 0;
                 for (let i = 0; i < n_vals.length; i++) {
                     let n = n_vals[i];
@@ -810,14 +946,22 @@
                     re += val * Math.cos(angle);
                     im += val * Math.sin(angle);
                 }
-                return Math.sqrt(re * re + im * im);
-            });
+                reArr[k] = re;
+                imArr[k] = im;
+            }
+            return { re: reArr, im: imArr };
         } else {
-            const T_win = getCurrentTimeVector().T;
             const normFactor = signalObj.isPeriodic ? (1.0 / T_win) : 1.0;
-            let currentT = getCurrentTimeVector().t;
+            const fNyq = currentDt > 0 ? (0.5 / currentDt) : Infinity;
 
-            return active_f_axis.map(f => {
+            for (let k = 0; k < len; k++) {
+                const f = active_f_axis[k];
+                // Evitar réplicas espurias por aliasing por encima de la frecuencia de Nyquist de la malla temporal
+                if (Math.abs(f) > fNyq) {
+                    reArr[k] = 0;
+                    imArr[k] = 0;
+                    continue;
+                }
                 let re = 0, im = 0;
                 for (let n = 0; n < N; n++) {
                     if (x[n] === 0) continue;
@@ -825,15 +969,27 @@
                     re += x[n] * Math.cos(angle);
                     im += x[n] * Math.sin(angle);
                 }
-                return Math.sqrt(re * re + im * im) * currentDt * normFactor;
-            });
+                reArr[k] = re * currentDt * normFactor;
+                imArr[k] = im * currentDt * normFactor;
+            }
+            return { re: reArr, im: imArr };
         }
+    }
+
+    function computeSpectrum(signalObj, currentDt, active_f_axis) {
+        if (!signalObj) return new Array(active_f_axis.length).fill(0);
+        const { re, im } = computeComplexSpectrum(signalObj, currentDt, active_f_axis);
+        const mag = new Array(active_f_axis.length);
+        for (let i = 0; i < active_f_axis.length; i++) {
+            mag[i] = Math.hypot(re[i], im[i]);
+        }
+        return mag;
     }
 
     function evaluateFilterH(f, tipo, aprox, fc, bw, orden, gain) {
         const absF = Math.abs(f);
-        const fcSafe = Math.max(0.1, Number.isFinite(Number(fc)) ? Number(fc) : 10);
-        const bwSafe = Math.max(0.1, Number.isFinite(Number(bw)) ? Number(bw) : 10);
+        const fcSafe = Math.max(1e-9, Number.isFinite(Number(fc)) ? Number(fc) : 10);
+        const bwSafe = Math.max(1e-9, Number.isFinite(Number(bw)) ? Number(bw) : 10);
         const ordenSafe = Math.max(1, Number.isFinite(Number(orden)) ? Number(orden) : 4);
         const gainSafe = Number.isFinite(Number(gain)) ? Number(gain) : 1.0;
         let H = 0;
@@ -842,7 +998,7 @@
         } else if (tipo === "Paso Alto (HPF)") {
             H = (aprox === "Ideal") ? (absF >= fcSafe ? 1 : 0) : (absF === 0 ? 0 : 1 / Math.sqrt(1 + Math.pow(fcSafe / absF, 2 * ordenSafe)));
         } else if (tipo === "Paso Banda (BPF)") {
-            const halfBW = Math.max(0.05, bwSafe / 2);
+            const halfBW = Math.max(1e-10, bwSafe / 2);
             const dist = Math.abs(absF - fcSafe);
             H = (aprox === "Ideal") ? (dist <= halfBW ? 1 : 0) : 1 / Math.sqrt(1 + Math.pow(dist / halfBW, 2 * ordenSafe));
         }
@@ -868,7 +1024,7 @@
     // --- GENERADOR CONTINUO ---
     function NodoGeneradorContinuo() {
         this.addOutput("x(t)", "signal");
-        this.properties = { nombre: "x(t)", tipo: "Pulso Rectangular", amp: 1, freq: 5, periodo: 0.2, ancho: 4.0, tau: 0.5 };
+        this.properties = { nombre: "x(t)", tipo: "Pulso Rectangular", amp: 1, freq: 5, freqUnit: "Hz", periodo: 0.2, ancho: 4.0, tau: 0.5, timeUnit: "s" };
         
         const that = this;
         this.wName = this.addWidget("text", "Etiqueta", "x(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
@@ -879,10 +1035,12 @@
         }, { values: ["Coseno", "Seno", "Pulso Rectangular", "Pulso Triangular", "Función Rampa", "Sinc (Sen Cardinal)", "Escalón Unidad", "Delta", "Exponencial Decreciente"] });
         
         this.wAmp = this.addWidget("number", "Amplitud", 1, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.amp = n; dirtyPlots = true; }, { step: 0.1 });
-        this.wFreq = this.addWidget("number", "Frec (Hz)", 5, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.freq = n; dirtyPlots = true; }, { step: 0.5 });
-        this.wPeriodo = this.addWidget("number", "Periodo T (s)", 0.2, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.periodo = Math.max(0.01, n); dirtyPlots = true; }, { min: 0.01, step: 0.1 });
-        this.wAncho = this.addWidget("number", "Duración (s)", 4.0, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.ancho = Math.max(0.001, n); dirtyPlots = true; }, { min: 0.05, step: 0.2 });
-        this.wTau = this.addWidget("number", "Tau τ (s)", 0.5, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.tau = Math.max(0.01, n); dirtyPlots = true; }, { min: 0.01, step: 0.05 });
+        this.wFreq = this.addWidget("number", "Frec", 5, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.freq = n; dirtyPlots = true; }, { step: 0.5 });
+        this.wFreqUnit = this.addWidget("combo", "Unid. Frec", "Hz", v => { that.properties.freqUnit = v; dirtyPlots = true; }, { values: FREQ_UNIT_LIST });
+        this.wPeriodo = this.addWidget("number", "Periodo T", 0.2, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.periodo = Math.max(0.001, n); dirtyPlots = true; }, { min: 0.001, step: 0.1 });
+        this.wAncho = this.addWidget("number", "Duración", 4.0, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.ancho = Math.max(0.001, n); dirtyPlots = true; }, { min: 0.001, step: 0.2 });
+        this.wTau = this.addWidget("number", "Tau τ", 0.5, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.tau = Math.max(0.001, n); dirtyPlots = true; }, { min: 0.001, step: 0.05 });
+        this.wTimeUnit = this.addWidget("combo", "Unid. Tiempo", "s", v => { that.properties.timeUnit = v; dirtyPlots = true; }, { values: TIME_UNIT_LIST });
         
         this.updateWidgetVisibility();
         applyLightStyle(this, "#bfdbfe", "#ffffff");
@@ -894,22 +1052,22 @@
         this.widgets = [this.wName, this.wType, this.wAmp];
         
         if (tipo === "Coseno" || tipo === "Seno") {
-            this.widgets.push(this.wFreq);
-            this.size = [270, 140];
+            this.widgets.push(this.wFreq, this.wFreqUnit);
+            this.size = [270, 165];
         } else if (tipo === "Sinc (Sen Cardinal)") {
             if (this.properties.periodo === undefined) {
                 this.properties.periodo = this.properties.freq ? (1 / this.properties.freq) : 0.2;
                 this.wPeriodo.value = this.properties.periodo;
             }
-            this.widgets.push(this.wPeriodo);
-            this.size = [270, 140];
+            this.widgets.push(this.wPeriodo, this.wTimeUnit);
+            this.size = [270, 165];
         } else if (tipo === "Pulso Rectangular" || tipo === "Pulso Triangular" || tipo === "Función Rampa") {
-            this.wAncho.name = (tipo === "Pulso Rectangular") ? "Ancho Pulso" : "Duración (s)";
-            this.widgets.push(this.wAncho);
-            this.size = [270, 140];
+            this.wAncho.name = (tipo === "Pulso Rectangular") ? "Ancho Pulso" : "Duración";
+            this.widgets.push(this.wAncho, this.wTimeUnit);
+            this.size = [270, 165];
         } else if (tipo === "Exponencial Decreciente") {
-            this.widgets.push(this.wTau);
-            this.size = [270, 140];
+            this.widgets.push(this.wTau, this.wTimeUnit);
+            this.size = [270, 165];
         } else {
             this.size = [270, 110];
         }
@@ -917,12 +1075,12 @@
     };
 
     NodoGeneradorContinuo.prototype.evalAt = function(time, dt) {
-        const { tipo, amp, freq, periodo, ancho, tau } = this.properties;
-        const anchoNum = Number(ancho);
-        const dur = Math.max(0.001, Number.isFinite(anchoNum) ? anchoNum : 1.0);
+        const { tipo, amp, freq, freqUnit, periodo, ancho, tau, timeUnit } = this.properties;
+        const freqHz = freqToHz(freq, freqUnit);
+        const dur = Math.max(1e-12, timeToSec(Number.isFinite(Number(ancho)) ? ancho : 1.0, timeUnit));
 
-        if (tipo === "Coseno") return amp * Math.cos(2 * Math.PI * freq * time);
-        if (tipo === "Seno") return amp * Math.sin(2 * Math.PI * freq * time);
+        if (tipo === "Coseno") return amp * Math.cos(2 * Math.PI * freqHz * time);
+        if (tipo === "Seno") return amp * Math.sin(2 * Math.PI * freqHz * time);
         if (tipo === "Pulso Rectangular") return Math.abs(time) <= (dur / 2) ? amp : 0;
         
         if (tipo === "Pulso Triangular") {
@@ -941,14 +1099,15 @@
         }
 
         if (tipo === "Sinc (Sen Cardinal)") {
-            const T_null = Math.max(0.001, Number(periodo !== undefined ? periodo : (freq ? 1 / freq : 0.2)));
+            const rawPeriodo = periodo !== undefined ? periodo : (freq ? 1 / freq : 0.2);
+            const T_null = Math.max(1e-12, timeToSec(rawPeriodo, timeUnit));
             let arg = (Math.PI * time) / T_null;
             return Math.abs(arg) < 1e-6 ? amp : amp * (Math.sin(arg) / arg);
         }
 
         if (tipo === "Escalón Unidad") return time >= 0 ? amp : 0;
         if (tipo === "Delta") return (time >= -dt * 0.5 && time < dt * 0.5) ? (amp / dt) : 0;
-        if (tipo === "Exponencial Decreciente") return time >= 0 ? amp * Math.exp(-time / Math.max(0.001, tau)) : 0;
+        if (tipo === "Exponencial Decreciente") return time >= 0 ? amp * Math.exp(-time / Math.max(1e-12, timeToSec(tau, timeUnit))) : 0;
         return 0;
     };
 
@@ -986,15 +1145,16 @@
     function NodoTransformacion() {
         this.addInput("x(t)", "signal");
         this.addOutput("y(t)", "signal");
-        this.properties = { nombre: "y(t)", t0: 0.0, a: 1.0, inv: false };
+        this.properties = { nombre: "y(t)", t0: 0.0, timeUnit: "s", a: 1.0, inv: false };
 
         const that = this;
         this.wName = this.addWidget("text", "Etiqueta", "y(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.wShift = this.addWidget("number", "Desplaz. t_0", 0.0, v => { that.properties.t0 = Number(v); dirtyPlots = true; }, { step: 0.5 });
+        this.wTimeUnit = this.addWidget("combo", "Unid. t_0", "s", v => { that.properties.timeUnit = v; dirtyPlots = true; }, { values: TIME_UNIT_LIST });
         this.wScale = this.addWidget("number", "Escalado a", 1.0, v => { that.properties.a = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.01, step: 0.1 });
         this.wInv = this.addWidget("toggle", "Inversión (-t)", false, v => { that.properties.inv = Boolean(v); dirtyPlots = true; });
 
-        this.size = [250, 140];
+        this.size = [250, 165];
         applyLightStyle(this, "#c7d2fe", "#ffffff");
     }
     NodoTransformacion.title = "Transf. Variable";
@@ -1012,6 +1172,8 @@
             this.wScale.options.step = 1;
             this.wScale.options.min = 1;
             this.wInv.name = "Inversión (-n)";
+            this.widgets = [this.wName, this.wShift, this.wScale, this.wInv];
+            this.size = [250, 140];
             if (this.properties.nombre === "y(t)") {
                 this.properties.nombre = "y[n]";
                 this.wName.value = "y[n]";
@@ -1025,6 +1187,8 @@
             this.wScale.options.step = 0.1;
             this.wScale.options.min = 0.01;
             this.wInv.name = "Inversión (-t)";
+            this.widgets = [this.wName, this.wShift, this.wTimeUnit, this.wScale, this.wInv];
+            this.size = [250, 165];
             if (this.properties.nombre === "y[n]") {
                 this.properties.nombre = "y(t)";
                 this.wName.value = "y(t)";
@@ -1036,7 +1200,7 @@
     NodoTransformacion.prototype.evalAt = function(time, dt, visited) {
         let in1 = this.getInputData(0);
         if (!in1) return 0;
-        const t0 = Number.isFinite(Number(this.properties.t0)) ? Number(this.properties.t0) : 0;
+        const t0 = timeToSec(this.properties.t0, this.properties.timeUnit);
         const aRaw = Number(this.properties.a);
         const a_val = Math.max(0.01, Number.isFinite(aRaw) ? aRaw : 1);
         const sign = this.properties.inv ? -1.0 : 1.0;
@@ -1062,7 +1226,7 @@
         const { t, dt, tMin } = getCurrentTimeVector();
 
         if (isSampled) {
-            const t0 = Number.isFinite(Number(this.properties.t0)) ? Number(this.properties.t0) : 0;
+            const t0 = timeToSec(this.properties.t0, this.properties.timeUnit);
             const aRaw = Number(this.properties.a);
             const a_val = Math.max(0.01, Number.isFinite(aRaw) ? aRaw : 1);
 
@@ -1141,7 +1305,7 @@
         } else {
             const aRaw = Number(this.properties.a);
             const a_val = Math.max(0.01, Number.isFinite(aRaw) ? aRaw : 1);
-            const t0 = Number.isFinite(Number(this.properties.t0)) ? Number(this.properties.t0) : 0;
+            const t0 = timeToSec(this.properties.t0, this.properties.timeUnit);
             let outValues = t.map(time => this.evalAt(time, dt));
 
             const outObj = {
@@ -1222,7 +1386,8 @@
             bits: "10110010", 
             codigo: "NRZ Unipolar (0/1)", 
             rb: 2.0,         
-            t_start: 0.0,    
+            t_start: 0.0,
+            timeUnit: "s",
             amp: 1.0 
         };
         
@@ -1242,14 +1407,15 @@
         this.addWidget("number", "Tasa Rb (bps)", 2.0, v => { that.properties.rb = Math.max(0.1, Number(v)); dirtyPlots = true; }, { 
             min: 0.1, step: 0.5 
         });
-        this.addWidget("number", "Inicio t0 (s)", 0.0, v => { that.properties.t_start = Number(v); dirtyPlots = true; }, { 
+        this.addWidget("number", "Inicio t0", 0.0, v => { that.properties.t_start = Number(v); dirtyPlots = true; }, { 
             step: 0.2 
         });
+        this.addWidget("combo", "Unid. t0", "s", v => { that.properties.timeUnit = v; dirtyPlots = true; }, { values: TIME_UNIT_LIST });
         this.addWidget("number", "Amplitud", 1.0, v => { that.properties.amp = Number(v); dirtyPlots = true; }, { 
             step: 0.1 
         });
         
-        this.size = [285, 185];
+        this.size = [285, 210];
         applyLightStyle(this, "#bfdbfe", "#ffffff");
     }
     NodoDigital.title = "Secuencia Digital";
@@ -1284,7 +1450,7 @@
         const numBits = cleanBits.length;
         const rb = Math.max(0.1, Number(this.properties.rb || 1));
         const Tb = 1.0 / rb;
-        const tStart = Number(this.properties.t_start !== undefined ? this.properties.t_start : 0);
+        const tStart = timeToSec(this.properties.t_start !== undefined ? this.properties.t_start : 0, this.properties.timeUnit);
         const tEnd = tStart + numBits * Tb;
         const { codigo, amp, nombre } = this.properties;
         const { t, dt } = getCurrentTimeVector();
@@ -1726,7 +1892,7 @@
         this.addOutput("y(t)", "signal");
         this.properties = { 
             nombre: "y_filt(t)", tipo: "Paso Bajo (LPF)", aprox: "Ideal", 
-            fc: 10, bw: 10, orden: 4, gain: 1.0, showH: true
+            fc: 10, bw: 10, freqUnit: "Hz", orden: 4, gain: 1.0, showH: true
         };
 
         const that = this;
@@ -1737,8 +1903,9 @@
             dirtyPlots = true; 
         }, { values: ["Paso Bajo (LPF)", "Paso Alto (HPF)", "Paso Banda (BPF)"] });
         this.wAprox = this.addWidget("combo", "Resp.", "Ideal", v => { that.properties.aprox = v; dirtyPlots = true; }, { values: ["Ideal", "Butterworth"] });
-        this.wFc = this.addWidget("number", "fc (Hz)", 10, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.fc = Math.max(0.1, n); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
-        this.wBw = this.addWidget("number", "Ancho Bw (Hz)", 10, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.bw = Math.max(0.1, n); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
+        this.wFc = this.addWidget("number", "fc Corte", 10, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.fc = Math.max(0.001, n); dirtyPlots = true; }, { min: 0.001, step: 0.5 });
+        this.wBw = this.addWidget("number", "Ancho Bw", 10, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.bw = Math.max(0.001, n); dirtyPlots = true; }, { min: 0.001, step: 0.5 });
+        this.wFreqUnit = this.addWidget("combo", "Unid. Frec", "Hz", v => { that.properties.freqUnit = v; dirtyPlots = true; }, { values: FREQ_UNIT_LIST });
         this.wGain = this.addWidget("number", "Ganancia", 1.0, v => { const n = Number(v); if (Number.isFinite(n)) that.properties.gain = n; dirtyPlots = true; }, { step: 0.1 });
         this.wShowH = this.addWidget("toggle", "Ver |H(f)|", true, v => { that.properties.showH = Boolean(v); dirtyPlots = true; });
 
@@ -1749,14 +1916,14 @@
 
     NodoFiltro.prototype.updateWidgetsVisibility = function() {
         const isBpf = this.properties.tipo === "Paso Banda (BPF)";
-        this.wFc.name = isBpf ? "f0 Central (Hz)" : "fc Corte (Hz)";
+        this.wFc.name = isBpf ? "f0 Central" : "fc Corte";
         
         if (isBpf) {
-            this.widgets = [this.wName, this.wTipo, this.wAprox, this.wFc, this.wBw, this.wGain, this.wShowH];
-            this.size = [260, 215];
+            this.widgets = [this.wName, this.wTipo, this.wAprox, this.wFc, this.wBw, this.wFreqUnit, this.wGain, this.wShowH];
+            this.size = [260, 240];
         } else {
-            this.widgets = [this.wName, this.wTipo, this.wAprox, this.wFc, this.wGain, this.wShowH];
-            this.size = [260, 190];
+            this.widgets = [this.wName, this.wTipo, this.wAprox, this.wFc, this.wFreqUnit, this.wGain, this.wShowH];
+            this.size = [260, 215];
         }
         this.setDirtyCanvas(true, true);
     };
@@ -1768,9 +1935,9 @@
             return;
         }
 
-        const { tipo, aprox, orden, nombre } = this.properties;
-        const fcVal = Math.max(0.1, Number.isFinite(Number(this.properties.fc)) ? Number(this.properties.fc) : 10);
-        const bwVal = Math.max(0.1, Number.isFinite(Number(this.properties.bw)) ? Number(this.properties.bw) : 10);
+        const { tipo, aprox, orden, nombre, freqUnit } = this.properties;
+        const fcVal = Math.max(1e-9, freqToHz(Number.isFinite(Number(this.properties.fc)) ? this.properties.fc : 10, freqUnit));
+        const bwVal = Math.max(1e-9, freqToHz(Number.isFinite(Number(this.properties.bw)) ? this.properties.bw : 10, freqUnit));
         const ordenVal = Math.max(1, Number.isFinite(Number(orden)) ? Number(orden) : 4);
         const gainVal = Number.isFinite(Number(this.properties.gain)) ? Number(this.properties.gain) : 1.0;
         const { t, dt, T } = getCurrentTimeVector();
@@ -1914,11 +2081,12 @@
     function NodoMuestreo() {
         this.addInput("x(t)", "signal");
         this.addOutput("xs(t)", "signal");
-        this.properties = { nombre: "xs(t)", fs_sample: 20 };
+        this.properties = { nombre: "xs(t)", fs_sample: 20, freqUnit: "Hz" };
         const that = this;
         this.addWidget("text", "Etiqueta", "xs(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "fs (Hz)", 20, v => { that.properties.fs_sample = Number(v); dirtyPlots = true; }, { min: 0.1, step: 0.5 });
-        this.size = [230, 95];
+        this.addWidget("number", "fs", 20, v => { that.properties.fs_sample = Number(v); dirtyPlots = true; }, { min: 0.001, step: 0.5 });
+        this.addWidget("combo", "Unid. fs", "Hz", v => { that.properties.freqUnit = v; dirtyPlots = true; }, { values: FREQ_UNIT_LIST });
+        this.size = [230, 120];
         applyLightStyle(this, "#a7f3d0", "#ffffff");
     }
     NodoMuestreo.title = "Muestreo Ideal (xs)";
@@ -1937,7 +2105,7 @@
         this.boxcolor = null;
         
         const rawFs = Number(this.properties.fs_sample);
-        const fs_s = Math.max(0.1, Math.min(5000, Number.isFinite(rawFs) ? rawFs : 20));
+        const fs_s = Math.max(1e-6, freqToHz(Number.isFinite(rawFs) ? rawFs : 20, this.properties.freqUnit));
         const Ts = 1 / fs_s;
         const { tMin, tMax, dt } = getCurrentTimeVector();
         const { nombre } = this.properties;
@@ -1945,8 +2113,11 @@
         let sampledValues = new Array(N).fill(0);
         let customX = [], customY = [], sampleInstants = [];
 
-        const maxN = Math.floor(Math.max(Math.abs(tMin), Math.abs(tMax)) / Ts) + 2;
-        for (let n = -maxN; n <= maxN; n++) {
+        const nStart = Math.floor(tMin / Ts) - 1;
+        const nEnd = Math.ceil(tMax / Ts) + 1;
+        const totalSamples = nEnd - nStart + 1;
+        const sampleStep = totalSamples > 5000 ? Math.ceil(totalSamples / 5000) : 1;
+        for (let n = nStart; n <= nEnd; n += sampleStep) {
             let tSample = n * Ts;
             if (tSample >= tMin - 1e-12 && tSample <= tMax + 1e-12) {
                 const tEval = Math.max(tMin, Math.min(tMax, tSample));
@@ -3002,21 +3173,23 @@
     function NodoModuladorAM() {
         this.addInput("m(t)", "signal");
         this.addOutput("s_AM(t)", "signal");
-        this.properties = { nombre: "s_AM(t)", fc: 25, mu: 0.8, Ac: 1 };
+        this.properties = { nombre: "s_AM(t)", fc: 25, freqUnit: "Hz", mu: 0.8, Ac: 1 };
         const that = this;
         this.addWidget("text", "Etiqueta", "s_AM(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.addWidget("combo", "Unid. fc", "Hz", v => { that.properties.freqUnit = v; dirtyPlots = true; }, { values: FREQ_UNIT_LIST });
         this.addWidget("number", "Índice Mod μ", 0.8, v => { that.properties.mu = Number(v); dirtyPlots = true; }, { step: 0.1 });
         this.addWidget("number", "Amplitud Ac", 1, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { step: 0.2 });
         this.amStats = { Am: 0, ka: 0, hasInput: false };
-        this.size = [250, 168];
+        this.size = [250, 192];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorAM.title = "Modulador AM";
     NodoModuladorAM.prototype.evalAt = function(time, dt, visited) {
         let in1 = this.getInputData(0);
         if (!in1) return 0;
-        const { fc, mu, Ac } = this.properties;
+        const { fc, freqUnit, mu, Ac } = this.properties;
+        const fcHz = freqToHz(fc, freqUnit);
         let ka = (this.amStats && this.amStats.hasInput) ? this.amStats.ka : 0;
         if ((!this.amStats || !this.amStats.hasInput) && Array.isArray(in1.values)) {
             let Am = 0;
@@ -3027,7 +3200,7 @@
             ka = Am > 1e-9 ? (mu / Am) : 0;
         }
         const mVal = evalSignalAt(in1, time, dt, visited);
-        return Ac * (1 + ka * mVal) * Math.cos(2 * Math.PI * fc * time);
+        return Ac * (1 + ka * mVal) * Math.cos(2 * Math.PI * fcHz * time);
     };
     NodoModuladorAM.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
@@ -3036,7 +3209,8 @@
             this.setOutputData(0, null);
             return;
         }
-        const { fc, mu, Ac, nombre } = this.properties;
+        const { fc, freqUnit, mu, Ac, nombre } = this.properties;
+        const fcHz = freqToHz(fc, freqUnit);
         const { t, dt } = getCurrentTimeVector();
         const m = in1.values;
 
@@ -3051,14 +3225,22 @@
         const ka = Am > 1e-9 ? (mu / Am) : 0;
         this.amStats = { Am: Am, ka: ka, hasInput: true };
 
-        let values = t.map((time, idx) => Ac * (1 + ka * m[idx]) * Math.cos(2 * Math.PI * fc * time));
-        this.setOutputData(0, { name: nombre || "s_AM(t)", sourceNode: this, values, discrete: false, isPeriodic: true, dt: dt });
+        let values = t.map((time, idx) => Ac * (1 + ka * m[idx]) * Math.cos(2 * Math.PI * fcHz * time));
+        this.setOutputData(0, {
+            name: nombre || "s_AM(t)",
+            sourceNode: this,
+            values,
+            discrete: false,
+            isPeriodic: true,
+            amMeta: { fc: fcHz, Ac: Ac, ka: ka, modulatingSignal: in1 },
+            dt: dt
+        });
     };
     NodoModuladorAM.prototype.onDrawForeground = function(ctx) {
         if (this.flags.collapsed) return;
         const w = this.size[0];
         const boxX = 10;
-        const boxY = 136;
+        const boxY = 160;
         const boxW = w - 20;
         const boxH = 22;
 
@@ -3090,15 +3272,16 @@
     function NodoModuladorFM() {
         this.addInput("m(t)", "signal");
         this.addOutput("s_FM(t)", "signal");
-        this.properties = { nombre: "s_FM(t)", fc: 25, beta: 5, Ac: 1 };
+        this.properties = { nombre: "s_FM(t)", fc: 25, freqUnit: "Hz", beta: 5, Ac: 1 };
         
         const that = this;
         this.addWidget("text", "Etiqueta", "s_FM(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "Portadora fc (Hz)", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.addWidget("combo", "Unid. fc", "Hz", v => { that.properties.freqUnit = v; dirtyPlots = true; }, { values: FREQ_UNIT_LIST });
         this.addWidget("number", "Índice β", 5, v => { that.properties.beta = Number(v); dirtyPlots = true; }, { min: 0, step: 0.5 });
         this.addWidget("number", "Amplitud Ac", 1, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { step: 0.2 });
 
-        this.size = [260, 140];
+        this.size = [260, 165];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorFM.title = "Modulador FM";
@@ -3110,7 +3293,8 @@
             return;
         }
 
-        const { fc, beta, Ac, nombre } = this.properties;
+        const { fc, freqUnit, beta, Ac, nombre } = this.properties;
+        const fcHz = freqToHz(fc, freqUnit);
         const { t, dt } = getCurrentTimeVector();
         const m = in1.values;
 
@@ -3136,7 +3320,7 @@
 
         for (let i = 0; i < N; i++) {
             let mNorm = m[i] / maxAmp;
-            let fInst = fc + deltaF * mNorm;
+            let fInst = fcHz + deltaF * mNorm;
             phase += 2 * Math.PI * fInst * dt;
             values[i] = Ac * Math.cos(phase);
         }
@@ -3156,24 +3340,26 @@
     function NodoModuladorPM() {
         this.addInput("m(t)", "signal");
         this.addOutput("s_PM(t)", "signal");
-        this.properties = { nombre: "s_PM(t)", fc: 25, kp: 1.5, Ac: 1.0 };
+        this.properties = { nombre: "s_PM(t)", fc: 25, freqUnit: "Hz", kp: 1.5, Ac: 1.0 };
 
         const that = this;
         this.addWidget("text", "Etiqueta", "s_PM(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "Portadora fc (Hz)", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.addWidget("number", "Portadora fc", 25, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.addWidget("combo", "Unid. fc", "Hz", v => { that.properties.freqUnit = v; dirtyPlots = true; }, { values: FREQ_UNIT_LIST });
         this.addWidget("number", "Sensibilidad kp (rad)", 1.5, v => { that.properties.kp = Number(v); dirtyPlots = true; }, { step: 0.2 });
         this.addWidget("number", "Amplitud Ac", 1.0, v => { that.properties.Ac = Number(v); dirtyPlots = true; }, { step: 0.2 });
 
-        this.size = [275, 140];
+        this.size = [275, 165];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorPM.title = "Modulador PM";
     NodoModuladorPM.prototype.evalAt = function(time, dt, visited) {
         let in1 = this.getInputData(0);
         if (!in1) return 0;
-        const { fc, kp, Ac } = this.properties;
+        const { fc, freqUnit, kp, Ac } = this.properties;
+        const fcHz = freqToHz(fc, freqUnit);
         const mVal = evalSignalAt(in1, time, dt, visited);
-        return Ac * Math.cos(2 * Math.PI * fc * time + kp * mVal);
+        return Ac * Math.cos(2 * Math.PI * fcHz * time + kp * mVal);
     };
     NodoModuladorPM.prototype.onExecute = function() {
         let in1 = this.getInputData(0);
@@ -3182,11 +3368,12 @@
             return;
         }
 
-        const { fc, kp, Ac, nombre } = this.properties;
+        const { fc, freqUnit, kp, Ac, nombre } = this.properties;
+        const fcHz = freqToHz(fc, freqUnit);
         const { t, dt } = getCurrentTimeVector();
         const m = in1.values;
 
-        let values = t.map((time, idx) => Ac * Math.cos(2 * Math.PI * fc * time + kp * m[idx]));
+        let values = t.map((time, idx) => Ac * Math.cos(2 * Math.PI * fcHz * time + kp * m[idx]));
 
         this.setOutputData(0, {
             name: nombre || "s_PM(t)",
@@ -3204,14 +3391,15 @@
     function NodoDetectorEnvolvente() {
         this.addInput("s_AM", "signal");
         this.addOutput("m_rec", "signal");
-        this.properties = { nombre: "m_rec(t)", tau: 0.04, removeDC: false };
+        this.properties = { nombre: "m_rec(t)", tau: 0.04, timeUnit: "s", removeDC: false };
 
         const that = this;
         this.addWidget("text", "Etiqueta", "m_rec(t)", v => { that.properties.nombre = v; dirtyPlots = true; });
-        this.addWidget("number", "Tau RC (s)", 0.04, v => { that.properties.tau = Math.max(0.001, Number(v)); dirtyPlots = true; }, { min: 0.001, step: 0.005 });
+        this.addWidget("number", "Tau RC", 0.04, v => { that.properties.tau = Math.max(0.001, Number(v)); dirtyPlots = true; }, { min: 0.001, step: 0.005 });
+        this.addWidget("combo", "Unid. Tau", "s", v => { that.properties.timeUnit = v; dirtyPlots = true; }, { values: TIME_UNIT_LIST });
         this.addWidget("toggle", "Quitar DC", false, v => { that.properties.removeDC = Boolean(v); dirtyPlots = true; });
 
-        this.size = [250, 120];
+        this.size = [250, 145];
         applyLightStyle(this, "#fed7aa", "#ffffff");
     }
     NodoDetectorEnvolvente.title = "Detector de Envolvente";
@@ -3222,12 +3410,13 @@
             return;
         }
 
-        const { tau, removeDC, nombre } = this.properties;
+        const { tau, timeUnit, removeDC, nombre } = this.properties;
+        const tauSec = Math.max(1e-12, timeToSec(tau, timeUnit));
         const { dt } = getCurrentTimeVector();
         const x = in1.values;
         let env = new Array(N).fill(0);
 
-        const decay = Math.exp(-dt / Math.max(0.001, tau));
+        const decay = Math.exp(-dt / tauSec);
         let vCap = 0;
         for (let i = 0; i < N; i++) {
             let vRect = Math.abs(x[i]);
@@ -3260,6 +3449,7 @@
             nombre: "s_QAM(t)", 
             tipo: "4-QAM (QPSK)", 
             fc: 20, 
+            freqUnit: "Hz",
             baudios: 2, 
             Ac: 1.0,
             bits: "11010010" 
@@ -3270,12 +3460,13 @@
         this.addWidget("combo", "Constelación", "4-QAM (QPSK)", v => { that.properties.tipo = v; dirtyPlots = true; }, { 
             values: ["4-QAM (QPSK)", "16-QAM"] 
         });
-        this.addWidget("number", "Portadora fc (Hz)", 20, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.addWidget("number", "Portadora fc", 20, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.addWidget("combo", "Unid. fc", "Hz", v => { that.properties.freqUnit = v; dirtyPlots = true; }, { values: FREQ_UNIT_LIST });
         this.addWidget("number", "Baudios (sym/s)", 2, v => { that.properties.baudios = Math.max(0.1, Number(v)); dirtyPlots = true; }, { step: 0.5 });
         this.addWidget("text", "Bits (fallback)", "11010010", v => { that.properties.bits = v; dirtyPlots = true; });
 
         this.modSymbols = [];
-        this.size = [275, 345];
+        this.size = [275, 370];
         applyLightStyle(this, "#fde68a", "#ffffff");
     }
     NodoModuladorQAM.title = "Modulador QAM";
@@ -3322,7 +3513,8 @@
         bitStr = bitStr.replace(/[^01]/g, "");
         if (bitStr.length === 0) bitStr = "1101";
 
-        const { tipo, fc, Ac, nombre } = this.properties;
+        const { tipo, fc, freqUnit, Ac, nombre } = this.properties;
+        const fcHz = freqToHz(fc, freqUnit);
         const baudios = Math.max(0.1, Number(this.properties.baudios || 2));
         const Ts = 1.0 / baudios;
         const kBits = (tipo === "4-QAM (QPSK)") ? 2 : 4;
@@ -3347,7 +3539,7 @@
             symList.push({ index: m + 1, bits: symBits, I: I, Q: Q });
         }
         this.modSymbols = symList;
-        this._lastModParams = { tStart, tEnd, Ts, numSymbols, kBits, bitStr, fc, Ac };
+        this._lastModParams = { tStart, tEnd, Ts, numSymbols, kBits, bitStr, fc: fcHz, Ac };
 
         let values = t.map(time => {
             if (time < tStart || time >= tEnd) return 0;
@@ -3355,7 +3547,7 @@
             if (symIdx >= numSymbols) symIdx = numSymbols - 1;
             let symBits = bitStr.substring(symIdx * kBits, (symIdx + 1) * kBits);
             let [I, Q] = this._getIQ(symBits, kBits);
-            return Ac * (I * Math.cos(2 * Math.PI * fc * time) - Q * Math.sin(2 * Math.PI * fc * time));
+            return Ac * (I * Math.cos(2 * Math.PI * fcHz * time) - Q * Math.sin(2 * Math.PI * fcHz * time));
         });
 
         this.setOutputData(0, {
@@ -3365,7 +3557,7 @@
             discrete: false,
             isPeriodic: false,
             qamMeta: {
-                fc: fc,
+                fc: fcHz,
                 baudios: baudios,
                 Ac: Ac,
                 tipo: tipo,
@@ -3382,7 +3574,7 @@
     NodoModuladorQAM.prototype.onDrawForeground = function(ctx) {
         if (this.flags.collapsed) return;
         const w = this.size[0];
-        const startY = 175;
+        const startY = 199;
         const plotSize = 155;
         const cx = w / 2;
         const cy = startY + plotSize / 2;
@@ -3469,16 +3661,18 @@
             nombre: "Canal",
             atenuacion: 0.8,
             ruido: 0.15,
-            retardo: 0.0
+            retardo: 0.0,
+            timeUnit: "s"
         };
 
         const that = this;
         this.addWidget("text", "Etiqueta", "Canal", v => { that.properties.nombre = v; dirtyPlots = true; });
         this.addWidget("number", "Atenuación α", 0.8, v => { that.properties.atenuacion = Math.max(0, Number(v)); dirtyPlots = true; }, { min: 0, max: 2, step: 0.05 });
         this.addWidget("number", "Ruido σ (AWGN)", 0.15, v => { that.properties.ruido = Math.max(0, Number(v)); dirtyPlots = true; }, { min: 0, step: 0.02 });
-        this.addWidget("number", "Retardo (s)", 0.0, v => { that.properties.retardo = Number(v); dirtyPlots = true; }, { step: 0.05 });
+        this.addWidget("number", "Retardo", 0.0, v => { that.properties.retardo = Number(v); dirtyPlots = true; }, { step: 0.05 });
+        this.addWidget("combo", "Unid. Retardo", "s", v => { that.properties.timeUnit = v; dirtyPlots = true; }, { values: TIME_UNIT_LIST });
 
-        this.size = [260, 140];
+        this.size = [260, 165];
         applyLightStyle(this, "#fdba74", "#ffffff");
     }
     NodoCanal.title = "Canal (Aten/Ruido)";
@@ -3495,7 +3689,7 @@
         if (!in1) return 0;
         const alpha = Number.isFinite(Number(this.properties.atenuacion)) ? Number(this.properties.atenuacion) : 1.0;
         const sigma = Number.isFinite(Number(this.properties.ruido)) ? Number(this.properties.ruido) : 0.0;
-        const tDelay = Number.isFinite(Number(this.properties.retardo)) ? Number(this.properties.retardo) : 0.0;
+        const tDelay = timeToSec(this.properties.retardo, this.properties.timeUnit);
 
         let val = alpha * evalSignalAt(in1, time - tDelay, dt, visited);
         if (sigma > 0 && Array.isArray(this._lastNoise)) {
@@ -3522,10 +3716,10 @@
             return;
         }
 
-        const { atenuacion, ruido, retardo, nombre } = this.properties;
+        const { atenuacion, ruido, retardo, timeUnit, nombre } = this.properties;
         const alpha = Number.isFinite(Number(atenuacion)) ? Number(atenuacion) : 1.0;
         const sigma = Number.isFinite(Number(ruido)) ? Number(ruido) : 0.0;
-        const tDelay = Number.isFinite(Number(retardo)) ? Number(retardo) : 0.0;
+        const tDelay = timeToSec(retardo, timeUnit);
         const { t, dt, tMin } = getCurrentTimeVector();
 
         let outValues = new Array(N).fill(0);
@@ -3618,8 +3812,10 @@
             nombre: "d_rec(t)",
             tipo: "4-QAM (QPSK)",
             fc: 20,
+            freqUnit: "Hz",
             baudios: 2,
             t_start: 0.0,
+            timeUnit: "s",
             num_sym: 4,
             autoSync: true
         };
@@ -3630,13 +3826,15 @@
         this.wType = this.addWidget("combo", "Constelación", "4-QAM (QPSK)", v => { that.properties.tipo = v; dirtyPlots = true; }, {
             values: ["4-QAM (QPSK)", "16-QAM"]
         });
-        this.wFc = this.addWidget("number", "Portadora fc (Hz)", 20, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.wFc = this.addWidget("number", "Portadora fc", 20, v => { that.properties.fc = Number(v); dirtyPlots = true; }, { step: 1 });
+        this.wFreqUnit = this.addWidget("combo", "Unid. fc", "Hz", v => { that.properties.freqUnit = v; dirtyPlots = true; }, { values: FREQ_UNIT_LIST });
         this.wBaudios = this.addWidget("number", "Baudios (sym/s)", 2, v => { that.properties.baudios = Math.max(0.1, Number(v)); dirtyPlots = true; }, { step: 0.5 });
-        this.wTStart = this.addWidget("number", "Inicio t0 (s)", 0.0, v => { that.properties.t_start = Number(v); dirtyPlots = true; }, { step: 0.2 });
+        this.wTStart = this.addWidget("number", "Inicio t0", 0.0, v => { that.properties.t_start = Number(v); dirtyPlots = true; }, { step: 0.2 });
+        this.wTimeUnit = this.addWidget("combo", "Unid. t0", "s", v => { that.properties.timeUnit = v; dirtyPlots = true; }, { values: TIME_UNIT_LIST });
         this.wNumSym = this.addWidget("number", "N.º Símbolos", 4, v => { that.properties.num_sym = Math.max(1, Math.round(Number(v))); dirtyPlots = true; }, { min: 1, step: 1 });
 
         this.decodedSymbols = [];
-        this.size = [305, 475];
+        this.size = [305, 523];
         applyLightStyle(this, "#fed7aa", "#ffffff");
     }
     NodoDemoduladorQAM.title = "Demodulador QAM";
@@ -3667,27 +3865,30 @@
 
         const meta = findQamMetaInSignal(in1);
         if (this.properties.autoSync !== false && meta) {
+            const fScale = getFreqMultiplier(this.properties.freqUnit);
+            const tScale = getTimeMultiplier(this.properties.timeUnit);
             this.properties.tipo = meta.tipo;
-            this.properties.fc = meta.fc;
+            this.properties.fc = meta.fc / fScale;
             this.properties.baudios = meta.baudios;
-            this.properties.t_start = meta.tStart;
+            this.properties.t_start = meta.tStart / tScale;
             this.properties.num_sym = meta.numSymbols;
 
             if (this.wType) this.wType.value = meta.tipo;
-            if (this.wFc) this.wFc.value = meta.fc;
+            if (this.wFc) this.wFc.value = this.properties.fc;
             if (this.wBaudios) this.wBaudios.value = meta.baudios;
-            if (this.wTStart) this.wTStart.value = meta.tStart;
+            if (this.wTStart) this.wTStart.value = this.properties.t_start;
             if (this.wNumSym) this.wNumSym.value = meta.numSymbols;
         }
 
-        const { tipo, fc, baudios, t_start, num_sym, nombre } = this.properties;
+        const { tipo, fc: fcRaw, freqUnit, baudios, t_start, timeUnit, num_sym, nombre } = this.properties;
+        const fc = freqToHz(fcRaw, freqUnit);
         const kBits = (tipo === "4-QAM (QPSK)") ? 2 : 4;
         const baudios_val = Math.max(0.1, Number(baudios || 2));
         const Ts = 1.0 / baudios_val;
         const { t, dt, tMin, tMax } = getCurrentTimeVector();
         const x = in1.values;
 
-        let tStart = Number(t_start || 0);
+        let tStart = timeToSec(t_start || 0, timeUnit);
         let totalSyms = Math.max(1, Math.round(Number(num_sym || 4)));
         const Ac_ref = (meta && meta.Ac) ? meta.Ac : 1.0;
         const tDelay = (meta && meta.tDelay) ? meta.tDelay : 0.0;
@@ -3853,7 +4054,7 @@
             return recoveredBits[bIdx] === "1" ? 1.0 : 0.0;
         });
 
-        const neededHeight = 382 + Math.max(1, symbolsList.length) * 16;
+        const neededHeight = 430 + Math.max(1, symbolsList.length) * 16;
         if (this.size[1] !== neededHeight) {
             this.size[1] = neededHeight;
             this.setDirtyCanvas(true, true);
@@ -3881,7 +4082,7 @@
         const syms = this.decodedSymbols || [];
         const w = this.size[0];
         
-        const plotY = 195;
+        const plotY = 243;
         const plotSize = 145;
         const cx = w / 2;
         const cy = plotY + plotSize / 2;
@@ -4345,6 +4546,7 @@
             tb: 0.5,
             autoTb: true,
             t_offset: 0.0,
+            timeUnit: "s",
             num_traces: 24,
             samples_per_trace: 160
         };
@@ -4357,14 +4559,15 @@
             dirtyPlots = true;
         });
         this.addWidget("toggle", "Auto Tb/Ts", true, v => { that.properties.autoTb = Boolean(v); dirtyPlots = true; });
-        this.wTb = this.addWidget("number", "Periodo Tb (s)", 0.5, v => { that.properties.tb = Math.max(0.01, Number(v)); dirtyPlots = true; }, { min: 0.01, step: 0.05 });
-        this.addWidget("number", "Offset t0 (s)", 0.0, v => { that.properties.t_offset = Number(v); dirtyPlots = true; }, { step: 0.05 });
+        this.wTb = this.addWidget("number", "Periodo Tb", 0.5, v => { that.properties.tb = Math.max(0.001, Number(v)); dirtyPlots = true; }, { min: 0.001, step: 0.05 });
+        this.addWidget("number", "Offset t0", 0.0, v => { that.properties.t_offset = Number(v); dirtyPlots = true; }, { step: 0.05 });
+        this.wTimeUnit = this.addWidget("combo", "Unid. Tiempo", "s", v => { that.properties.timeUnit = v; dirtyPlots = true; }, { values: TIME_UNIT_LIST });
         this.addWidget("number", "Trazas máx", 24, v => { that.properties.num_traces = Math.max(4, Math.min(100, Math.round(Number(v)))); dirtyPlots = true; }, { min: 4, max: 100, step: 2 });
         this.addWidget("button", "Reiniciar Media", null, () => { that.resetEyeMetrics(); });
 
         this._oscUid = "osc_" + (++globalOscUidCounter);
         this.title = "👁️ " + this.properties.nombre;
-        this.size = [285, 370];
+        this.size = [285, 395];
         this.eyeMetrics = null;
         this._avgMetrics = null;
         applyLightStyle(this, "#e9d5ff", "#ffffff");
@@ -4440,9 +4643,13 @@
             else if (sig.baudios) detectedTb = 1.0 / sig.baudios;
             else if (sig.qamMeta && sig.qamMeta.Ts) detectedTb = sig.qamMeta.Ts;
 
-            if (detectedTb && Math.abs(this.properties.tb - detectedTb) > 1e-4) {
-                this.properties.tb = detectedTb;
-                if (this.wTb) this.wTb.value = detectedTb;
+            if (detectedTb) {
+                const tScale = getTimeMultiplier(this.properties.timeUnit);
+                const detectedDisplay = detectedTb / tScale;
+                if (Math.abs(this.properties.tb - detectedDisplay) > 1e-4) {
+                    this.properties.tb = detectedDisplay;
+                    if (this.wTb) this.wTb.value = detectedDisplay;
+                }
             }
         }
 
@@ -4461,10 +4668,10 @@
 
     NodoOsciloscopioOjo.prototype.computeEyeMetrics = function(sig) {
         const { dt, tMin, tMax } = getCurrentTimeVector();
-        const Tb = Math.max(0.005, Number(this.properties.tb || 0.5));
+        const Tb = Math.max(1e-9, timeToSec(this.properties.tb || 0.5, this.properties.timeUnit));
         const T_span = 2 * Tb;
         const tStart = sig.t_start !== undefined ? sig.t_start : 0;
-        const tOffset = Number(this.properties.t_offset || 0);
+        const tOffset = timeToSec(this.properties.t_offset || 0, this.properties.timeUnit);
         const tBase = tStart + tOffset + 0.5 * Tb;
         const eyeCfg = getEyeLineCodeConfig(sig);
 
@@ -4724,9 +4931,9 @@
 
     NodoOsciloscopioOjo.prototype.onDrawForeground = function(ctx) {
         if (this.flags.collapsed) return;
-        if (this.size[1] < 370) this.size[1] = 370;
+        if (this.size[1] < 395) this.size[1] = 395;
         const w = this.size[0];
-        const startY = 184;
+        const startY = 208;
         const miniPlotH = 80;
         const miniPlotW = w - 24;
         const plotX = 12;
@@ -5402,8 +5609,18 @@
         const in1 = (oscNode && oscNode.getInputData(0)) ? oscNode.getInputData(0) : (oscNode ? oscNode.lastSignal : null);
 
         const { t, tMin, tMax, dt } = getCurrentTimeVector();
-        const fMax = Math.abs(parseFloat(document.getElementById("fMax").value)) || 50.0;
-        const { axis: active_f_axis } = getActiveFrequencyAxis(fMax);
+        const tUnit = getPlotTimeUnit();
+        const tScale = getTimeMultiplier(tUnit);
+        const fUnit = getPlotFreqUnit();
+        const fScale = getFreqMultiplier(fUnit);
+        const rawFMin = parseFloat(document.getElementById("fMin").value);
+        const rawFMax = parseFloat(document.getElementById("fMax").value);
+        let fMinDisplay = Number.isFinite(rawFMin) ? rawFMin : -50.0;
+        let fMaxDisplay = Number.isFinite(rawFMax) ? rawFMax : 50.0;
+        if (fMinDisplay >= fMaxDisplay) fMinDisplay = fMaxDisplay - 1.0;
+        const fMin = fMinDisplay * fScale;
+        const fMax = fMaxDisplay * fScale;
+        const { axis: active_f_axis } = getActiveFrequencyAxis(fMin, fMax);
 
         const oscName = oscNode ? oscNode.properties.nombre : "Sin Osciloscopio activo";
         const sigName = (in1 && in1.name) ? in1.name : "Señal";
@@ -5414,14 +5631,14 @@
         const manualFreqY = getManualYRange("yFreqMin", "yFreqMax", "yFreqAuto");
 
         let timeTraces = [];
-        let xLabel = isDisc ? "n (índice entero)" : "Tiempo t (s)";
+        let xLabel = isDisc ? "n (índice entero)" : `Tiempo t (${tUnit})`;
         let exportTimeDataset = null;
 
         if (isEyeScope && in1 && in1.values) {
-            const Tb = Math.max(0.005, Number(oscNode.properties.tb || 0.5));
+            const Tb = Math.max(1e-9, timeToSec(oscNode.properties.tb || 0.5, oscNode.properties.timeUnit));
             const T_eye = 2 * Tb;
             const tStart = in1.t_start !== undefined ? in1.t_start : 0;
-            const tOffset = Number(oscNode.properties.t_offset || 0);
+            const tOffset = timeToSec(oscNode.properties.t_offset || 0, oscNode.properties.timeUnit);
             const tBase = tStart + tOffset + 0.5 * Tb;
             const eyeCfg = getEyeLineCodeConfig(in1);
             const numTraces = Math.max(8, Math.round(Number(oscNode.properties.num_traces || 24)));
@@ -5442,7 +5659,12 @@
             }
 
             let eyeTimeAxis = [];
-            for (let s = 0; s < samplesPerTrace; s++) eyeTimeAxis.push(s * dtTrace);
+            let eyeTimeAxisDisplay = [];
+            for (let s = 0; s < samplesPerTrace; s++) {
+                const tv = s * dtTrace;
+                eyeTimeAxis.push(tv);
+                eyeTimeAxisDisplay.push(tv / tScale);
+            }
 
             const eyeExportTraces = [];
             for (let k = 0; k < numTraces; k++) {
@@ -5460,7 +5682,7 @@
 
                 eyeExportTraces.push(yTrace);
                 timeTraces.push({
-                    x: eyeTimeAxis,
+                    x: eyeTimeAxisDisplay,
                     y: yTrace,
                     type: 'scatter',
                     mode: 'lines',
@@ -5503,7 +5725,7 @@
                     decX.push(null);
                     decY.push(null);
                 }
-                const tDec = fracTb * Tb;
+                const tDec = (fracTb * Tb) / tScale;
                 decX.push(tDec, tDec);
                 decY.push(yDecLow, yDecHigh);
             });
@@ -5521,10 +5743,10 @@
                 const em = oscNode.eyeMetrics;
                 const nTramas = em.framesCount || 1;
                 const qLabel = em.qFactor > 50 ? ">50" : em.qFactor.toFixed(1);
-                metricInfo = `<br>Media (${nTramas} ${nTramas === 1 ? "trama" : "tramas"}): Apertura=${em.aperturaV.toFixed(2)}V, Ancho=${em.anchoOjo.toFixed(3)}s, Jitter=${(em.jitterPP * 1000).toFixed(1)}ms, Q=${qLabel}`;
+                metricInfo = `<br>Media (${nTramas} ${nTramas === 1 ? "trama" : "tramas"}): Apertura=${em.aperturaV.toFixed(2)}V, Ancho=${(em.anchoOjo / tScale).toFixed(3)}${tUnit}, Jitter=${(em.jitterPP / tScale).toFixed(3)}${tUnit}, Q=${qLabel}`;
             }
             const codeInfo = eyeCfg.shortName ? ` · ${eyeCfg.shortName}` : "";
-            xLabel = `Ventana 2·Tb (s) [Tb=${Tb.toFixed(3)}s${codeInfo}]${metricInfo}`;
+            xLabel = `Ventana 2·Tb (${tUnit}) [Tb=${(Tb / tScale).toFixed(3)}${tUnit}${codeInfo}]${metricInfo}`;
         } else if (isDisc && in1 && in1.stemX) {
             let stemX_lines = [];
             let stemY_lines = [];
@@ -5556,8 +5778,9 @@
                 columns: [in1.stemX.slice(), in1.stemY.slice()]
             };
         } else {
+            const tDisplay = t.map(v => v / tScale);
             timeTraces.push({
-                x: t,
+                x: tDisplay,
                 y: y,
                 type: 'scatter',
                 mode: 'lines',
@@ -5572,7 +5795,9 @@
             };
         }
 
-        const defaultTimeRange = isEyeScope ? [0, 2 * Math.max(0.005, Number(oscNode.properties.tb || 0.5))] : [tMin, tMax];
+        const defaultTimeRange = isEyeScope
+            ? [0, (2 * Math.max(1e-9, timeToSec(oscNode.properties.tb || 0.5, oscNode.properties.timeUnit))) / tScale]
+            : [tMin / tScale, tMax / tScale];
         const timeXAxis = {
             title: xLabel,
             range: savedTimeRanges.x ? savedTimeRanges.x : defaultTimeRange,
@@ -5621,8 +5846,9 @@
         if (showFreqSpectrum) {
             let signalDt = in1 && in1.dt ? in1.dt : dt;
             let spectrum = in1 ? computeSpectrum(in1, signalDt, active_f_axis) : new Array(active_f_axis.length).fill(0);
+            const active_f_display = active_f_axis.map(f => f / fScale);
             let freqTraces = [{
-                x: active_f_axis,
+                x: active_f_display,
                 y: spectrum,
                 type: 'scatter',
                 mode: 'lines',
@@ -5642,7 +5868,7 @@
                 let maxH = Math.max(...H_active, 1);
                 let scaledH = H_active.map(v => v * (maxSpec / maxH));
                 freqTraces.push({
-                    x: active_f_axis,
+                    x: active_f_display,
                     y: scaledH,
                     type: 'scatter',
                     mode: 'lines',
@@ -5662,8 +5888,8 @@
             };
 
             const freqXAxis = {
-                title: 'Frecuencia f (Hz)',
-                range: savedFreqRanges.x ? savedFreqRanges.x : [-fMax, fMax],
+                title: `Frecuencia f (${fUnit})`,
+                range: savedFreqRanges.x ? savedFreqRanges.x : [fMinDisplay, fMaxDisplay],
                 gridcolor: '#e2e8f0',
                 zerolinecolor: '#94a3b8'
             };
@@ -5702,6 +5928,7 @@
             isDiscrete: isDisc,
             tMin,
             tMax,
+            fMin,
             fMax,
             tb: isEyeScope ? Math.max(0.005, Number(oscNode.properties.tb || 0.5)) : null,
             time: exportTimeDataset,
@@ -5733,7 +5960,10 @@
     function ensureFreqExportDataset(snapshot) {
         if (!snapshot) return null;
         if (snapshot.freq) return snapshot.freq;
-        const { axis: active_f_axis } = getActiveFrequencyAxis(snapshot.fMax || 50);
+        const { axis: active_f_axis } = getActiveFrequencyAxis(
+            snapshot.fMin !== undefined ? snapshot.fMin : -(snapshot.fMax || 50),
+            snapshot.fMax !== undefined ? snapshot.fMax : 50
+        );
         const in1 = snapshot._in1;
         const signalDt = (in1 && in1.dt) ? in1.dt : (snapshot._dt || 0.01);
         const spectrum = in1 ? computeSpectrum(in1, signalDt, active_f_axis) : new Array(active_f_axis.length).fill(0);
@@ -5819,11 +6049,11 @@
             lines.push(`# Osciloscopio: ${snapshot.oscName} | Senal: ${snapshot.sigName}`);
             if (dataset.isCombined) {
                 lines.push(`# Grafica: ${dataset.domainLabel} | Muestras tiempo: ${dataset.timeRows} | Puntos espectro: ${dataset.freqRows} (relleno NaN si difieren)`);
-                lines.push(`# Ventana temporal: [${snapshot.tMin}, ${snapshot.tMax}] s | Rango frecuencial: [-${snapshot.fMax}, ${snapshot.fMax}] Hz`);
+                lines.push(`# Ventana temporal: [${snapshot.tMin}, ${snapshot.tMax}] s | Rango frecuencial: [${snapshot.fMin}, ${snapshot.fMax}] Hz`);
             } else {
                 lines.push(`# Grafica: ${dataset.domainLabel} | Muestras: ${numRows}`);
                 if (dataset.fileSuffix === "espectro") {
-                    lines.push(`# Rango frecuencial: [-${snapshot.fMax}, ${snapshot.fMax}] Hz`);
+                    lines.push(`# Rango frecuencial: [${snapshot.fMin}, ${snapshot.fMax}] Hz`);
                 } else if (dataset.fileSuffix === "ojo" && snapshot.tb) {
                     lines.push(`# Ventana diagrama de ojo: [0, ${(2 * snapshot.tb).toFixed(6)}] s (Tb=${snapshot.tb} s)`);
                 } else {
